@@ -82,7 +82,7 @@ frogpilot_default_params: list[tuple[str, str | bytes, int]] = [
   ("BigMap", "0", 2),
   ("BlacklistedModels", "", 2),
   ("BlindSpotMetrics", "1", 3),
-  ("BlindSpotPath", "1", 0),
+  ("BlindSpotPath", "1", 2),
   ("BorderMetrics", "0", 3),
   ("CameraView", "3", 2),
   ("CarMake", "", 0),
