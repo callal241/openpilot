@@ -38,6 +38,7 @@ FrogPilotModelPanel::FrogPilotModelPanel(FrogPilotSettingsWindow *parent) : Frog
               blacklistableModels.append(modelFileToNameMapProcessed.value(model));
             }
           }
+          blacklistableModels.sort();
 
           if (blacklistableModels.size() <= 1) {
             FrogPilotConfirmationDialog::toggleAlert(tr("There are no more models to blacklist! The only available model is \"%1\"!").arg(blacklistableModels.first()), tr("OK"), this);
@@ -58,7 +59,6 @@ FrogPilotModelPanel::FrogPilotModelPanel(FrogPilotSettingsWindow *parent) : Frog
               whitelistableModels.append(modelName);
             }
           }
-          whitelistableModels.sort();
 
           QString modelToWhitelist = MultiOptionDialog::getSelection(tr("Select a model to remove from the blacklist"), whitelistableModels, "", this);
           if (!modelToWhitelist.isEmpty()) {
@@ -81,7 +81,6 @@ FrogPilotModelPanel::FrogPilotModelPanel(FrogPilotSettingsWindow *parent) : Frog
         if (FrogPilotConfirmationDialog::yesorno(tr("Are you sure you want to reset all of your model drives and scores?"), this)) {
           params.remove("ModelDrivesAndScores");
           params_storage.remove("ModelDrivesAndScores");
-          updateModelLabels();
         }
       });
       modelToggle = resetScoresBtn;
@@ -112,6 +111,7 @@ FrogPilotModelPanel::FrogPilotModelPanel(FrogPilotSettingsWindow *parent) : Frog
         }
         deletableModels.removeAll(processModelName(QString::fromStdString(params.get("ModelName"))));
         deletableModels.removeAll(processModelName(QString::fromStdString(params_default.get("ModelName"))));
+        deletableModels.sort();
 
         if (id == 0) {
           QString modelToDelete = MultiOptionDialog::getSelection(tr("Select a driving model to delete"), deletableModels, "", this);
@@ -152,6 +152,7 @@ FrogPilotModelPanel::FrogPilotModelPanel(FrogPilotSettingsWindow *parent) : Frog
             for (const QString &file : modelDir.entryList(QDir::Files)) {
               downloadableModels.removeAll(modelFileToNameMap.value(QFileInfo(file).baseName()));
             }
+            downloadableModels.sort();
 
             QString modelToDownload = MultiOptionDialog::getSelection(tr("Select a driving model to download"), downloadableModels, "", this);
             if (!modelToDownload.isEmpty()) {
@@ -189,6 +190,7 @@ FrogPilotModelPanel::FrogPilotModelPanel(FrogPilotSettingsWindow *parent) : Frog
             selectableModels.append(modelName);
           }
         }
+        selectableModels.sort();
         selectableModels.prepend(QString::fromStdString(params_default.get("ModelName")));
 
         QString modelToSelect = MultiOptionDialog::getSelection(tr("Select a model - 🗺️ = Navigation | 📡 = Radar | 👀 = VOACC"), selectableModels, QString::fromStdString(params.get("ModelName")), this);
@@ -246,9 +248,7 @@ void FrogPilotModelPanel::showEvent(QShowEvent *event) {
   tuningLevel = parent->tuningLevel;
 
   availableModels = QString::fromStdString(params.get("AvailableModels")).split(",");
-  availableModels.sort();
   availableModelNames = QString::fromStdString(params.get("AvailableModelNames")).split(",");
-  availableModelNames.sort();
 
   int size = qMin(availableModels.size(), availableModelNames.size());
   for (int i = 0; i < size; ++i) {
@@ -333,17 +333,17 @@ void FrogPilotModelPanel::updateModelLabels() {
   qDeleteAll(labelControls);
   labelControls.clear();
 
-  for (const QString &modelName : availableModelNames) {
-    QJsonObject modelData = modelDrivesAndScores.value(processModelName(modelName)).toObject();
+  for (const QString &modelName : modelDrivesAndScores.keys()) {
+    QJsonObject modelData = modelDrivesAndScores.value(modelName).toObject();
 
     int drives = modelData.value("Drives").toInt(0);
     int score = modelData.value("Score").toInt(0);
 
-    QString drivesDisplay = drives == 1 ? QString("%1 Drive") : drives > 0 ? QString("%1 Drives").arg(drives) : "N/A";
+    QString drivesDisplay = drives > 0 ? QString("%1 Drives").arg(drives) : "N/A";
     QString scoreDisplay = score > 0 ? QString("Score: %1%").arg(score) : "N/A";
 
-    QString labelTitle = QStringLiteral("%1").arg(processModelName(modelName));
-    QString labelText = QStringLiteral("%1 (%2)").arg(scoreDisplay, drivesDisplay);
+    QString labelTitle = QStringLiteral("%1").arg(modelName);
+    QString labelText = QStringLiteral("%2 (%3)").arg(scoreDisplay, drivesDisplay);
 
     LabelControl *labelControl = new LabelControl(labelTitle, labelText, "", this);
     labelControls.append(labelControl);

@@ -449,7 +449,7 @@ FrogPilotThemesPanel::FrogPilotThemesPanel(FrogPilotSettingsWindow *parent) : Fr
         QString stockBottom = "Always keep hands on wheel and eyes on road";
 
         QString frogpilotTop = "Hop in and buckle up!";
-        QString frogpilotBottom = "Human-tested, frog-approved 🐸";
+        QString frogpilotBottom = "Driver-tested, frog-approved 🐸";
 
         QString currentTop = QString::fromStdString(params.get("StartupMessageTop"));
         QString currentBottom = QString::fromStdString(params.get("StartupMessageBottom"));

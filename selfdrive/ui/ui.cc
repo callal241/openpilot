@@ -299,8 +299,6 @@ static void update_state(UIState *s) {
     scene.lane_width_left = frogpilotPlan.getLaneWidthLeft();
     scene.lane_width_right = frogpilotPlan.getLaneWidthRight();
     scene.mtsc_speed = frogpilotPlan.getMtscSpeed();
-    scene.obstacle_distance = frogpilotPlan.getSafeObstacleDistance();
-    scene.obstacle_distance_stock = frogpilotPlan.getSafeObstacleDistanceStock();
     scene.red_light = frogpilotPlan.getRedLight();
     scene.speed_jerk = frogpilotPlan.getSpeedJerk();
     scene.speed_jerk_difference = frogpilotPlan.getSpeedJerkStock() - scene.speed_jerk;
@@ -311,7 +309,6 @@ static void update_state(UIState *s) {
     scene.speed_limit_overridden = frogpilotPlan.getSlcOverridden();
     scene.speed_limit_overridden_speed = frogpilotPlan.getSlcOverriddenSpeed();
     scene.speed_limit_source = frogpilotPlan.getSlcSpeedLimitSource().cStr();
-    scene.stopped_equivalence = frogpilotPlan.getStoppedEquivalenceFactor();
     scene.unconfirmed_speed_limit = frogpilotPlan.getUnconfirmedSlcSpeedLimit();
     scene.upcoming_speed_limit = frogpilotPlan.getUpcomingSLCSpeedLimit();
     scene.vtsc_controlling_curve = frogpilotPlan.getVtscControllingCurve();
@@ -368,15 +365,11 @@ void ui_update_frogpilot_params(UIState *s) {
   scene.adjacent_path = scene.frogpilot_toggles.value("adjacent_paths").toBool();
   scene.adjacent_path_metrics = scene.frogpilot_toggles.value("adjacent_path_metrics").toBool();
   scene.always_on_lateral = scene.frogpilot_toggles.value("always_on_lateral").toBool();
-  scene.aol_status_bar = scene.frogpilot_toggles.value("always_on_lateral_status_bar").toBool();
   scene.big_map = scene.frogpilot_toggles.value("big_map").toBool();
   scene.blind_spot_path = scene.frogpilot_toggles.value("blind_spot_path").toBool();
   scene.camera_view = scene.frogpilot_toggles.value("camera_view").toDouble();
-  scene.cem_status_bar = scene.frogpilot_toggles.value("conditional_status_bar").toBool();
   scene.compass = scene.frogpilot_toggles.value("compass").toBool();
   scene.conditional_experimental = scene.frogpilot_toggles.value("conditional_experimental_mode").toBool();
-  scene.conditional_limit = scene.frogpilot_toggles.value("conditional_limit").toDouble();
-  scene.conditional_limit_lead = scene.frogpilot_toggles.value("conditional_limit_lead").toDouble();
   scene.cpu_metrics = scene.frogpilot_toggles.value("cpu_metrics").toBool();
   scene.driver_camera_in_reverse = scene.frogpilot_toggles.value("driver_camera_in_reverse").toBool();
   scene.dynamic_path_width = scene.frogpilot_toggles.value("dynamic_path_width").toBool();
@@ -395,7 +388,7 @@ void ui_update_frogpilot_params(UIState *s) {
   scene.hide_speed_limit = scene.frogpilot_toggles.value("hide_speed_limit").toBool();
   scene.ip_metrics = scene.frogpilot_toggles.value("ip_metrics").toBool();
   scene.jerk_metrics = scene.frogpilot_toggles.value("jerk_metrics").toBool();
-  scene.lateral_tuning_metrics = scene.frogpilot_toggles.value("lateral_tuning_metrics").toBool();
+  scene.lateral_tuning_metrics = scene.has_auto_tune && scene.frogpilot_toggles.value("lateral_tuning_metrics").toBool();
   scene.lane_detection_width = scene.frogpilot_toggles.value("lane_detection_width").toDouble();
   scene.lane_line_width = scene.frogpilot_toggles.value("lane_line_width").toDouble();
   scene.lead_detection_probability = scene.frogpilot_toggles.value("lead_detection_probability").toDouble();
@@ -448,6 +441,9 @@ void ui_update_frogpilot_params(UIState *s) {
   scene.storage_used_metrics = scene.frogpilot_toggles.value("storage_used_metrics").toBool();
   scene.tethering_config = scene.frogpilot_toggles.value("tethering_config").toDouble();
   scene.unlimited_road_ui_length = scene.frogpilot_toggles.value("unlimited_road_ui_length").toBool();
+  if (!scene.use_frogpilot_server.has_value()) {
+    scene.use_frogpilot_server = scene.frogpilot_toggles.value("use_frogpilot_server").toBool();
+  }
   scene.use_si_metrics = scene.frogpilot_toggles.value("use_si_metrics").toBool();
   scene.use_wheel_speed = scene.frogpilot_toggles.value("use_wheel_speed").toBool();
   scene.vtsc_enabled = scene.frogpilot_toggles.value("vision_turn_controller").toBool();

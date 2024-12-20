@@ -19,7 +19,7 @@ from openpilot.selfdrive.frogpilot.controls.frogpilot_planner import FrogPilotPl
 from openpilot.selfdrive.frogpilot.controls.lib.frogpilot_tracking import FrogPilotTracking
 from openpilot.selfdrive.frogpilot.frogpilot_functions import backup_toggles
 from openpilot.selfdrive.frogpilot.frogpilot_utilities import is_url_pingable
-from openpilot.selfdrive.frogpilot.frogpilot_variables import FrogPilotVariables, get_frogpilot_toggles, params, params_memory
+from openpilot.selfdrive.frogpilot.frogpilot_variables import FrogPilotVariables, get_frogpilot_toggles, use_frogpilot_server, params, params_memory
 from openpilot.selfdrive.frogpilot.navigation.mapd import update_mapd
 
 locks = {
@@ -134,11 +134,14 @@ def frogpilot_thread():
   theme_manager = ThemeManager()
 
   assets_checked = False
+  debug_ui = False
   run_update_checks = False
   started_previously = False
   theme_updated = False
   time_validated = False
   toggles_updated = False
+
+  started_time = 0
 
   frogpilot_toggles = get_frogpilot_toggles()
 
@@ -173,9 +176,6 @@ def frogpilot_thread():
       frogpilot_tracking = FrogPilotTracking()
 
       run_update_checks = True
-
-      frogpilot_variables.update(theme_manager.theme_assets["holiday_theme"], started)
-      frogpilot_toggles = get_frogpilot_toggles()
     elif started and not started_previously:
       radarless_model = frogpilot_toggles.radarless_model
 
@@ -194,11 +194,20 @@ def frogpilot_thread():
       frogpilot_plan_send.frogpilotPlan.togglesUpdated = toggles_updated
       pm.send('frogpilotPlan', frogpilot_plan_send)
 
+    started_time = started_time + 1 if started else 0
+
     started_previously = started
 
     if now.second % 2 == 0:
       if not assets_checked:
         check_assets(model_manager, theme_manager, frogpilot_toggles)
+
+        if params_memory.get_bool("DebugUI"):
+          debug_ui = True
+          params_memory.remove("DebugUI")
+        elif debug_ui and started_time > 100:
+          sentry.capture_tmux(started_time, params)
+          debug_ui = False
 
         assets_checked = True
     else:
@@ -211,6 +220,9 @@ def frogpilot_thread():
     if run_update_checks:
       theme_updated = theme_manager.update_active_theme(time_validated, frogpilot_toggles)
       run_thread_with_lock("update_checks", update_checks, (model_manager, now, theme_manager, frogpilot_toggles))
+
+      if not frogpilot_toggles.use_frogpilot_server and use_frogpilot_server() and not started:
+        HARDWARE.reboot()
 
       run_update_checks = False
     elif not time_validated:

@@ -246,6 +246,8 @@ void FrogPilotSettingsWindow::updateVariables() {
       params.putFloat("SteerRatioStock", steerRatioStock);
     }
 
+    uiState()->scene.has_auto_tune = hasAutoTune || forcingAutoTune;
+
     if (params.checkKey("LiveTorqueParameters")) {
       std::string torqueParams = params.get("LiveTorqueParameters");
       if (!torqueParams.empty()) {

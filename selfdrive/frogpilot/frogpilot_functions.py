@@ -27,7 +27,7 @@ def backup_directory(backup, destination, success_message, fail_message, minimum
 
     destination.mkdir(parents=True, exist_ok=False)
 
-    run_cmd(["sudo", "rsync", "-avq", f"{backup}/.", str(destination)], success_message, fail_message)
+    run_cmd(["sudo", "rsync", "-avq", str(backup) + "/.", str(destination)], success_message, fail_message)
     print(f"Backup successfully created at {destination}")
 
   else:
@@ -41,12 +41,12 @@ def backup_directory(backup, destination, success_message, fail_message, minimum
     in_progress_destination = destination.parent / (destination.name + "_in_progress")
     in_progress_destination.mkdir(parents=True, exist_ok=False)
 
-    run_cmd(["sudo", "rsync", "-avq", f"{backup}/.", str(in_progress_destination)], "", fail_message)
+    run_cmd(["sudo", "rsync", "-avq", str(backup) + "/.", str(in_progress_destination)], success_message, fail_message)
 
     with tarfile.open(in_progress_compressed, "w:gz") as tar:
       tar.add(in_progress_destination, arcname=destination.name)
 
-    run_cmd(["sudo", "rm", "-rf", str(in_progress_destination)], success_message, fail_message)
+    shutil.rmtree(in_progress_destination)
     in_progress_compressed.rename(destination_compressed)
     print(f"Backup successfully compressed to {destination_compressed}")
 
@@ -54,26 +54,29 @@ def backup_directory(backup, destination, success_message, fail_message, minimum
     if minimum_backup_size == 0 or compressed_backup_size < minimum_backup_size:
       params.put_int("MinimumBackupSize", compressed_backup_size)
 
-def cleanup_backups(directory, limit, success_message, fail_message, compressed=False):
+def cleanup_backups(directory, limit, compressed=False):
   directory.mkdir(parents=True, exist_ok=True)
   backups = sorted(directory.glob("*_auto*"), key=lambda x: x.stat().st_mtime, reverse=True)
   for backup in backups[:]:
     if backup.name.endswith("_in_progress") or backup.name.endswith("_in_progress.tar.gz"):
-      run_cmd(["sudo", "rm", "-rf", str(backup)], "", fail_message)
+      if backup.is_dir():
+        shutil.rmtree(backup)
+      else:
+        backup.unlink()
       backups.remove(backup)
 
   for oldest_backup in backups[limit:]:
     if oldest_backup.is_dir():
-      run_cmd(["sudo", "rm", "-rf", str(oldest_backup)], success_message, fail_message)
+      shutil.rmtree(oldest_backup)
     else:
-      run_cmd(["sudo", "rm", str(oldest_backup)], success_message, fail_message)
+      oldest_backup.unlink()
 
 def backup_frogpilot(build_metadata):
   backup_path = Path("/data/backups")
   maximum_backups = 5
   minimum_backup_size = params.get_int("MinimumBackupSize")
 
-  cleanup_backups(backup_path, maximum_backups, f"Successfully cleaned up old FrogPilot backups", f"Failed to cleanup old FrogPilot backups", True)
+  cleanup_backups(backup_path, maximum_backups)
 
   _, _, free = shutil.disk_usage(backup_path)
   required_free_space = minimum_backup_size * maximum_backups
@@ -82,7 +85,7 @@ def backup_frogpilot(build_metadata):
     branch = build_metadata.channel
     commit = build_metadata.openpilot.git_commit_date[12:-16]
     backup_dir = backup_path / f"{branch}_{commit}_auto"
-    backup_directory(Path(BASEDIR), backup_dir, f"Successfully backed up FrogPilot to {backup_dir}", f"Failed to backup FrogPilot to {backup_dir}", minimum_backup_size, compressed=True)
+    backup_directory(Path(BASEDIR), Path(backup_dir), f"Successfully backed up FrogPilot to {backup_dir}", f"Failed to backup FrogPilot to {backup_dir}", minimum_backup_size, True)
 
 def backup_toggles(params_storage):
   for key in params.all_keys():
@@ -94,7 +97,7 @@ def backup_toggles(params_storage):
   backup_path = Path("/data/toggle_backups")
   maximum_backups = 10
 
-  cleanup_backups(backup_path, maximum_backups, f"Successfully cleaned up old toggle backups", f"Failed to cleanup old toggle backups")
+  cleanup_backups(backup_path, maximum_backups, compressed=False)
 
   backup_dir = backup_path / f"{datetime.datetime.now().strftime('%Y-%m-%d_%I-%M%p').lower()}_auto"
   backup_directory(Path("/data/params/d"), backup_dir, f"Successfully backed up toggles to {backup_dir}", f"Failed to backup toggles to {backup_dir}")
@@ -114,7 +117,7 @@ def convert_params(params_storage):
   update_values(priority_keys, {"Offline Maps": "Map Data"})
 
   bottom_key = ["StartupMessageBottom"]
-  update_values(bottom_key, {"so I do what I want 🐸": "Human-tested, frog-approved 🐸"})
+  update_values(bottom_key, {"so I do what I want 🐸": "Driver-tested, frog-approved 🐸"})
 
   top_key = ["StartupMessageTop"]
   update_values(top_key, {"Hippity hoppity this is my property": "Hop in and buckle up!"})

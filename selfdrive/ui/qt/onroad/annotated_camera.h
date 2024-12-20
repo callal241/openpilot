@@ -8,29 +8,6 @@
 
 #include "selfdrive/frogpilot/screenrecorder/screenrecorder.h"
 
-class Compass : public QWidget {
-  Q_OBJECT
-
-public:
-  explicit Compass(QWidget *parent = 0);
-  void updateState(const UIScene &scene);
-
-private:
-  void initializeStaticElements();
-  void paintEvent(QPaintEvent *event) override;
-
-  int bearingDeg;
-  int circleOffset;
-  int compassSize;
-  int degreeLabelOffset;
-  int innerCompass;
-  int x;
-  int y;
-
-  QPixmap compassInnerImg;
-  QPixmap staticElements;
-};
-
 class PedalIcons : public QWidget {
   Q_OBJECT
 
@@ -40,6 +17,8 @@ public:
 
 private:
   void paintEvent(QPaintEvent *event) override;
+
+  Params params_memory{"/dev/shm/params"};
 
   QPixmap brake_pedal_img;
   QPixmap gas_pedal_img;
@@ -64,9 +43,11 @@ public:
   MapSettingsButton *map_settings_btn;
 
   // FrogPilot variables
-  MapSettingsButton *map_settings_btn_bottom;
-
   QRect newSpeedLimitRect;
+
+  QString accelerationUnit;
+
+  float accelerationConversion;
 
 private:
   void drawText(QPainter &p, int x, int y, const QString &text, int alpha = 255, bool overridePen = false);
@@ -94,8 +75,8 @@ private:
   bool wide_cam_requested = false;
 
   // FrogPilot widgets
-  void drawLeadInfo(QPainter &p);
-  void drawStatusBar(QPainter &p);
+  void drawCEMStatus(QPainter &p);
+  void drawRoadName(QPainter &p);
   void drawTurnSignals(QPainter &p);
   void initializeFrogPilotWidgets();
   void paintFrogPilotWidgets(QPainter &painter);
@@ -103,24 +84,27 @@ private:
   void updateSignals();
 
   // FrogPilot variables
-  Params paramsMemory{"/dev/shm/params"};
+  Params params_memory{"/dev/shm/params"};
 
-  Compass *compass_img;
   DistanceButton *distance_btn;
   PedalIcons *pedal_icons;
   ScreenRecorder *screenRecorder;
 
-  QHBoxLayout *bottom_layout;
-
+  QPixmap curveIcon;
   QPixmap curveSpeedLeftIcon;
   QPixmap curveSpeedRightIcon;
   QPixmap dashboardIcon;
+  QPixmap leadIcon;
+  QPixmap lightIcon;
   QPixmap mapDataIcon;
   QPixmap navigationIcon;
+  QPixmap speedIcon;
   QPixmap stopSignImg;
+  QPixmap turnIcon;
   QPixmap upcomingMapsIcon;
 
-  QString accelerationUnit;
+  QPoint dmIconPosition;
+
   QString leadDistanceUnit;
   QString leadSpeedUnit;
   QString signalStyle;
@@ -130,7 +114,6 @@ private:
   QVector<QPixmap> blindspotImages;
   QVector<QPixmap> signalImages;
 
-  bool alwaysOnLateralActive;
   bool bigMapOpen;
   bool blindSpotLeft;
   bool blindSpotRight;
@@ -147,8 +130,6 @@ private:
   bool mtscEnabled;
   bool onroadDistanceButton;
   bool roadNameUI;
-  bool showAlwaysOnLateralStatusBar;
-  bool showConditionalExperimentalStatusBar;
   bool showSLCOffset;
   bool slcOverridden;
   bool speedLimitChanged;
@@ -163,9 +144,6 @@ private:
   bool vtscControllingCurve;
   bool vtscEnabled;
 
-  double currentAcceleration;
-
-  float accelerationConversion;
   float dashboardSpeedLimit;
   float distanceConversion;
   float laneDetectionWidth;
@@ -184,20 +162,14 @@ private:
   int alertHeight;
   int animationFrameIndex;
   int cameraView;
-  int conditionalSpeed;
-  int conditionalSpeedLead;
   int conditionalStatus;
   int desiredFollow;
   int modelLength;
-  int obstacleDistance;
-  int obstacleDistanceStock;
   int signalAnimationLength;
   int signalHeight;
   int signalMovement;
   int signalWidth;
   int standstillDuration;
-  int statusBarHeight;
-  int stoppedEquivalence;
   int totalFrames;
 
   std::string speedLimitSource;
