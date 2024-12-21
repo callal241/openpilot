@@ -532,7 +532,7 @@ class CAR(Platforms):
   )
   GENESIS_G80 = HyundaiPlatformConfig(
     [HyundaiCarDocs("Genesis G80 2018-19", "All", car_parts=CarParts.common([CarHarness.hyundai_h]))],
-    CarSpecs(mass=2060, wheelbase=3.01, steerRatio=16.5),
+     CarSpecs(mass=2124, wheelbase=3.01, steerRatio=11.8),
     flags=HyundaiFlags.RADAR_SCC,
   )
   GENESIS_G90 = HyundaiPlatformConfig(
