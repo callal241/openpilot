@@ -514,16 +514,20 @@ FW_VERSIONS = {
       b'\xf1\x00IK  MFC  AT USA LHD 1.00 1.04 99211-G9000 220401',
     ],
   },
-  CAR.GENESIS_G80: {
+    CAR.GENESIS_G80: {
     (Ecu.fwdRadar, 0x7d0, None): [
+      b'\xf1\x10\x9f\x00\x00\x00',
+      b'\xf1\x00DH__ SCC FHCUP      1.00 1.01 96400-B1120         ',
+      b'\xf1\x00DH__ SCC F-CU-      1.00 1.01 96400-B1110         ',
       b'\xf1\x00DH__ SCC F-CUP      1.00 1.01 96400-B1120         ',
       b'\xf1\x00DH__ SCC F-CUP      1.00 1.02 96400-B1120         ',
       b'\xf1\x00DH__ SCC FHCUP      1.00 1.01 96400-B1110         ',
     ],
     (Ecu.fwdCamera, 0x7c4, None): [
+      b'\xf1\x00DH  LKAS AT USA LHD 1.01 1.01 95895-B1500 161014',
+      b'\xf1\x00DH  LKAS AT EUR LHD 1.01 1.01 95895-B1500 161014',
       b'\xf1\x00DH  LKAS AT KOR LHD 1.01 1.01 95895-B1500 161014',
       b'\xf1\x00DH  LKAS AT KOR LHD 1.01 1.02 95895-B1500 170810',
-      b'\xf1\x00DH  LKAS AT USA LHD 1.01 1.01 95895-B1500 161014',
       b'\xf1\x00DH  LKAS AT USA LHD 1.01 1.02 95895-B1500 170810',
       b'\xf1\x00DH  LKAS AT USA LHD 1.01 1.03 95895-B1500 180713',
       b'\xf1\x00DH  LKAS AT USA LHD 1.01 1.04 95895-B1500 181213',
