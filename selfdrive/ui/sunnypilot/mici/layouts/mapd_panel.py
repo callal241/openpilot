@@ -84,9 +84,12 @@ class MapdInfoPanel(Widget):
     if sm.updated["carState"]:
       self.current_speed = sm["carState"].vEgo * speed_conv
 
-    if sm.valid["carState"]:
+    if sm.valid["carState"] and sm.valid["controlsState"]:
       self.cruise_enabled = sm["carState"].cruiseState.enabled
-      self.set_speed = sm["carState"].cruiseState.speed * speed_conv
+      v_cruise_cluster = sm["carState"].vCruiseCluster
+      set_speed_kph = sm["controlsState"].vCruiseDEPRECATED if v_cruise_cluster == 0.0 else v_cruise_cluster
+      
+      self.set_speed = set_speed_kph * (METER_TO_MILE / METER_TO_KM) if not ui_state.is_metric else set_speed_kph
 
   def _render(self, rect: rl.Rectangle) -> None:
     self._update_state()
