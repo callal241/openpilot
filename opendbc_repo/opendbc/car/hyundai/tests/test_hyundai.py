@@ -11,7 +11,7 @@ from opendbc.car.hyundai.radar_interface import RADAR_START_ADDR
 from opendbc.car.hyundai.values import CAMERA_SCC_CAR, CANFD_CAR, CAN_GEARS, CAR, CHECKSUM, DATE_FW_ECUS, \
                                          HYBRID_CAR, EV_CAR, FW_QUERY_CONFIG, LEGACY_SAFETY_MODE_CAR, CANFD_FUZZY_WHITELIST, \
                                          UNSUPPORTED_LONGITUDINAL_CAR, PLATFORM_CODE_ECUS, HYUNDAI_VERSION_REQUEST_LONG, \
-                                         HYUNDAI_EPS_VERSION_REQUEST_KWP, HyundaiFlags, get_platform_codes, HyundaiSafetyFlags, \
+                                         HYUNDAI_VERSION_REQUEST_KWP, HyundaiFlags, get_platform_codes, HyundaiSafetyFlags, \
                                          NON_SCC_CAR
 from opendbc.car.hyundai.fingerprints import FW_VERSIONS
 
@@ -119,12 +119,11 @@ class TestHyundaiFingerprint(unittest.TestCase):
     respond to multiple queries with different data
     """
     expected_fw_prefix = HYUNDAI_VERSION_REQUEST_LONG[1:]
-    expected_eps_fw_prefixes = (expected_fw_prefix, HYUNDAI_EPS_VERSION_REQUEST_KWP[1:])
+    expected_fw_prefixes = (expected_fw_prefix, HYUNDAI_VERSION_REQUEST_KWP[1:])
     for car_model, ecus in FW_VERSIONS.items():
       with self.subTest(car_model=car_model.value):
         for ecu, fws in ecus.items():
-          expected_prefix = expected_eps_fw_prefixes if ecu[0] == Ecu.eps else (expected_fw_prefix,)
-          assert all(fw.startswith(expected_prefix) for fw in fws), \
+          assert all(fw.startswith(expected_fw_prefixes) for fw in fws), \
                           f"FW from unexpected request in database: {(ecu, fws)}"
 
   @settings(max_examples=100)

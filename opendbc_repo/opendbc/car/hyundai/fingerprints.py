@@ -523,6 +523,51 @@ FW_VERSIONS = {
     ],
   },
   CAR.GENESIS_G80: {
+    (Ecu.unknown, 0x725, None): [
+      b'\xf1\x00300',
+    ],
+    (Ecu.unknown, 0x751, None): [
+      b'\xf1\x00160',
+    ],
+    (Ecu.unknown, 0x752, None): [
+      b'\xf1\x00300',
+    ],
+    (Ecu.unknown, 0x760, None): [
+      b'\xf1\x00DH 1  ',
+    ],
+    (Ecu.unknown, 0x770, None): [
+      b'\xf1\x0031',
+    ],
+    (Ecu.unknown, 0x777, None): [
+      b'\xf1\x00270',
+    ],
+    (Ecu.unknown, 0x793, None): [
+      b'\xf1\x00CAN_DB160318',
+    ],
+    (Ecu.unknown, 0x7a0, None): [
+      b'\xf1\x00290',
+    ],
+    (Ecu.unknown, 0x7a1, None): [
+      b'\xf1\x00301',
+    ],
+    (Ecu.unknown, 0x7a2, None): [
+      b'\xf1\x00200',
+    ],
+    (Ecu.unknown, 0x7a3, None): [
+      b'\xf1\x00300',
+    ],
+    (Ecu.unknown, 0x7a4, None): [
+      b'\xf1\x00300',
+    ],
+    (Ecu.unknown, 0x7a6, None): [
+      b'\xf1\x00270',
+    ],
+    (Ecu.unknown, 0x7a7, None): [
+      b'\xf1\x00110',
+    ],
+    (Ecu.combinationMeter, 0x7c6, None): [
+      b'\xf1\x00641',
+    ],
     (Ecu.fwdRadar, 0x7d0, None): [
       b'\xf1\x00DH__ SCC F-CU-      1.00 1.01 96400-B1110         ',
       b'\xf1\x00DH__ SCC F-CUP      1.00 1.01 96400-B1120         ',
@@ -530,8 +575,20 @@ FW_VERSIONS = {
       b'\xf1\x00DH__ SCC FHCUP      1.00 1.01 96400-B1110         ',
       b'\xf1\x00DH__ SCC FHCUP      1.00 1.01 96400-B1120         ',
     ],
+    (Ecu.abs, 0x7d1, None): [
+      b'\x80DH ESC 4WD 1.00 1.02 U76KAD1C10-2-7111',
+    ],
+    (Ecu.unknown, 0x7d3, None): [
+      b'\x80DH  ECS  B4NA 1.00 1.03 95610-B1350',
+    ],
     (Ecu.eps, 0x7d4, None): [
       b'\x80DHP MDPS R 1.00 1.04 56320-B1300 6B28',
+    ],
+    (Ecu.epb, 0x7d5, None): [
+      b'\x80DH EPB \x19 21 \x16\x05\x15 59700-B1550',
+    ],
+    (Ecu.unknown, 0x7d6, None): [
+      b'\x80NA4W34 TPMS   \x02 1.001.00 95800-B1610UNIT-TPMS           16/03/280207400105',
     ],
     (Ecu.fwdCamera, 0x7c4, None): [
       b'\xf1\x00DH  LKAS AT EUR LHD 1.01 1.01 95895-B1500 161014',

@@ -762,8 +762,8 @@ HYUNDAI_VERSION_REQUEST_LONG = bytes([uds.SERVICE_TYPE.READ_DATA_BY_IDENTIFIER])
 HYUNDAI_VERSION_REQUEST_ALT = bytes([uds.SERVICE_TYPE.READ_DATA_BY_IDENTIFIER]) + \
   p16(0xf110)  # Alt long description
 
-HYUNDAI_EPS_VERSION_REQUEST_KWP = bytes([0x1a, 0x80])
-HYUNDAI_EPS_VERSION_RESPONSE_KWP = bytes([0x5a])
+HYUNDAI_VERSION_REQUEST_KWP = bytes([0x1a, 0x80])
+HYUNDAI_VERSION_RESPONSE_KWP = bytes([0x5a])
 
 HYUNDAI_ECU_MANUFACTURING_DATE = bytes([uds.SERVICE_TYPE.READ_DATA_BY_IDENTIFIER]) + \
   p16(uds.DATA_IDENTIFIER_TYPE.ECU_MANUFACTURING_DATE)
@@ -772,7 +772,7 @@ HYUNDAI_VERSION_RESPONSE = bytes([uds.SERVICE_TYPE.READ_DATA_BY_IDENTIFIER + 0x4
 
 # Regex patterns for parsing platform code, FW date, and part number from FW versions
 PLATFORM_CODE_FW_PATTERN = re.compile(b'(?:(?<=' + HYUNDAI_VERSION_REQUEST_LONG[1:] +
-                                      b')|(?<=' + HYUNDAI_EPS_VERSION_REQUEST_KWP[1:] +
+                                      b')|(?<=' + HYUNDAI_VERSION_REQUEST_KWP[1:] +
                                       b'))[A-Z]{2}[A-Za-z0-9]{0,2}')
 DATE_FW_PATTERN = re.compile(b'(?<=[ -])([0-9]{6}$)')
 PART_NUMBER_FW_PATTERN = re.compile(b'(?<=[0-9][.,][0-9]{2} )([0-9]{5}[-/]?[A-Z][A-Z0-9]{3}[0-9])')
@@ -800,9 +800,9 @@ FW_QUERY_CONFIG = FwQueryConfig(
       [HYUNDAI_VERSION_RESPONSE],
     ),
     Request(
-      [HYUNDAI_EPS_VERSION_REQUEST_KWP],
-      [HYUNDAI_EPS_VERSION_RESPONSE_KWP],
-      whitelist_ecus=[Ecu.eps],
+      [HYUNDAI_VERSION_REQUEST_KWP],
+      [HYUNDAI_VERSION_RESPONSE_KWP],
+      whitelist_ecus=[Ecu.abs, Ecu.eps, Ecu.epb, Ecu.unknown],
     ),
 
     # CAN & CAN-FD queries (from camera)
@@ -846,7 +846,7 @@ FW_QUERY_CONFIG = FwQueryConfig(
   # Note that we still attempt to match with them when they are present
   non_essential_ecus={
     Ecu.eps: [CAR.GENESIS_G80],
-    Ecu.abs: [CAR.HYUNDAI_PALISADE, CAR.HYUNDAI_SONATA, CAR.HYUNDAI_SANTA_FE_2022, CAR.KIA_K5_2021, CAR.HYUNDAI_ELANTRA_2021,
+    Ecu.abs: [CAR.GENESIS_G80, CAR.HYUNDAI_PALISADE, CAR.HYUNDAI_SONATA, CAR.HYUNDAI_SANTA_FE_2022, CAR.KIA_K5_2021, CAR.HYUNDAI_ELANTRA_2021,
               CAR.HYUNDAI_SANTA_FE, CAR.HYUNDAI_KONA_EV_2022, CAR.HYUNDAI_KONA_EV, CAR.HYUNDAI_CUSTIN_1ST_GEN, CAR.KIA_SORENTO,
               CAR.KIA_CEED, CAR.KIA_SELTOS],
   },
