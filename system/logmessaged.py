@@ -8,6 +8,9 @@ from openpilot.system.hardware.hw import Paths
 from openpilot.common.swaglog import get_file_handler
 
 
+MAX_PUBLISHED_LOG_BYTES = 64 * 1024
+
+
 def main() -> NoReturn:
   log_handler = get_file_handler()
   log_handler.setFormatter(SwagLogFileFormatter(None))
@@ -26,11 +29,12 @@ def main() -> NoReturn:
       dat = b''.join(sock.recv_multipart())
       level = dat[0]
       record = dat[1:].decode("utf-8")
+      record_bytes = record.encode("utf-8")
       if level >= log_level:
         log_handler.emit(record)
 
-      if len(record) > 2*1024*1024:
-        print("WARNING: log too big to publish", len(record))
+      if len(record_bytes) > MAX_PUBLISHED_LOG_BYTES:
+        print("WARNING: log too big to publish", len(record_bytes))
         print(record[:100])
         continue
 
