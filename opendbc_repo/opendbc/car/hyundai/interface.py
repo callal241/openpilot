@@ -130,7 +130,12 @@ class CarInterface(CarInterfaceBase):
 
     # Common longitudinal control setup
 
-    ret.radarUnavailable = RADAR_START_ADDR not in fingerprint[1] or Bus.radar not in DBC[ret.carFingerprint]
+    # Some DH Genesis G80 direct-radar installs output Mando radar points after
+    # the short startup fingerprint window. Keep radar enabled for the validated
+    # G80 Mando platform instead of depending on a transient first-second 0x500.
+    g80_direct_mando_radar = candidate == CAR.GENESIS_G80 and bool(ret.flags & HyundaiFlags.MANDO_RADAR)
+    radar_tracks_seen = RADAR_START_ADDR in fingerprint[1]
+    ret.radarUnavailable = Bus.radar not in DBC[ret.carFingerprint] or not (radar_tracks_seen or g80_direct_mando_radar)
     ret.openpilotLongitudinalControl = alpha_long and ret.alphaLongitudinalAvailable
     ret.pcmCruise = not ret.openpilotLongitudinalControl
     ret.startingState = True

@@ -11,7 +11,7 @@ from opendbc.car.hyundai.radar_interface import RADAR_START_ADDR
 from opendbc.car.hyundai.values import CAMERA_SCC_CAR, CANFD_CAR, CAN_GEARS, CAR, CHECKSUM, DATE_FW_ECUS, \
                                          HYBRID_CAR, EV_CAR, FW_QUERY_CONFIG, LEGACY_SAFETY_MODE_CAR, CANFD_FUZZY_WHITELIST, \
                                          UNSUPPORTED_LONGITUDINAL_CAR, PLATFORM_CODE_ECUS, HYUNDAI_VERSION_REQUEST_LONG, \
-                                         HyundaiFlags, get_platform_codes, HyundaiSafetyFlags, \
+                                         HYUNDAI_EPS_VERSION_REQUEST_KWP, HyundaiFlags, get_platform_codes, HyundaiSafetyFlags, \
                                          NON_SCC_CAR
 from opendbc.car.hyundai.fingerprints import FW_VERSIONS
 
@@ -63,6 +63,12 @@ class TestHyundaiFingerprint(unittest.TestCase):
       CP = CarInterface.get_params(CAR.HYUNDAI_SONATA, fingerprint, [], False, False, False)
       assert CP.radarUnavailable != radar
 
+    # DH Genesis G80 direct-radar tracks can appear after the startup
+    # fingerprint window, so the validated Mando profile keeps radar enabled.
+    fingerprint = gen_empty_fingerprint()
+    CP = CarInterface.get_params(CAR.GENESIS_G80, fingerprint, [], False, False, False)
+    assert not CP.radarUnavailable
+
   def test_alternate_limits(self):
     # Alternate lateral control limits, for high torque cars, verify Panda safety mode flag is set
     fingerprint = gen_empty_fingerprint()
@@ -113,10 +119,12 @@ class TestHyundaiFingerprint(unittest.TestCase):
     respond to multiple queries with different data
     """
     expected_fw_prefix = HYUNDAI_VERSION_REQUEST_LONG[1:]
+    expected_eps_fw_prefixes = (expected_fw_prefix, HYUNDAI_EPS_VERSION_REQUEST_KWP[1:])
     for car_model, ecus in FW_VERSIONS.items():
       with self.subTest(car_model=car_model.value):
         for ecu, fws in ecus.items():
-          assert all(fw.startswith(expected_fw_prefix) for fw in fws), \
+          expected_prefix = expected_eps_fw_prefixes if ecu[0] == Ecu.eps else (expected_fw_prefix,)
+          assert all(fw.startswith(expected_prefix) for fw in fws), \
                           f"FW from unexpected request in database: {(ecu, fws)}"
 
   @settings(max_examples=100)
@@ -149,7 +157,7 @@ class TestHyundaiFingerprint(unittest.TestCase):
   def test_platform_code_ecus_available(self):
     # TODO: add queries for these non-CAN FD cars to get EPS
     no_eps_platforms = CANFD_CAR | {CAR.KIA_SORENTO, CAR.KIA_OPTIMA_G4, CAR.KIA_OPTIMA_G4_FL, CAR.KIA_OPTIMA_H, CAR.KIA_K7_2017,
-                                    CAR.KIA_OPTIMA_H_G4_FL, CAR.HYUNDAI_SONATA_LF, CAR.HYUNDAI_TUCSON, CAR.GENESIS_G90, CAR.GENESIS_G80, CAR.HYUNDAI_ELANTRA}
+                                    CAR.KIA_OPTIMA_H_G4_FL, CAR.HYUNDAI_SONATA_LF, CAR.HYUNDAI_TUCSON, CAR.GENESIS_G90, CAR.HYUNDAI_ELANTRA}
 
     # Asserts ECU keys essential for fuzzy fingerprinting are available on all platforms
     for car_model, ecus in FW_VERSIONS.items():
