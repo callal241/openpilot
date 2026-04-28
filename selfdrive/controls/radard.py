@@ -119,7 +119,12 @@ def laplacian_pdf(x: float, mu: float, b: float):
   return math.exp(-abs(x-mu)/b)
 
 
-def match_vision_to_track(v_ego: float, lead: capnp._DynamicStructReader, tracks: dict[int, Track]):
+def use_lead_lateral_sanity(CP: structs.CarParams) -> bool:
+  return CP.brand == "hyundai" and CP.carFingerprint == "GENESIS_G80" and bool(CP.flags & HyundaiFlags.MANDO_RADAR)
+
+
+def match_vision_to_track(v_ego: float, lead: capnp._DynamicStructReader, tracks: dict[int, Track],
+                          check_lateral: bool = False):
   offset_vision_dist = lead.x[0] - RADAR_TO_CAMERA
 
   def prob(c):
@@ -137,7 +142,7 @@ def match_vision_to_track(v_ego: float, lead: capnp._DynamicStructReader, tracks
   dist_sane = abs(track.dRel - offset_vision_dist) < max([(offset_vision_dist)*.25, 5.0])
   vel_sane = (abs(track.vRel + v_ego - lead.v[0]) < 10) or (v_ego + track.vRel > 3)
   lat_sane = True
-  if math.isfinite(track.yRel):
+  if check_lateral and math.isfinite(track.yRel):
     vision_y = -lead.y[0]
     lat_tolerance = lead.yStd[0] * 3.0
     if not math.isfinite(lat_tolerance):
@@ -171,7 +176,7 @@ def get_lead(v_ego: float, ready: bool, tracks: dict[int, Track], lead_msg: capn
              model_v_ego: float, CP: structs.CarParams, CP_SP: structs.CarParamsSP, low_speed_override: bool = True) -> dict[str, Any]:
   # Determine leads, this is where the essential logic happens
   if len(tracks) > 0 and ready and lead_msg.prob > .5:
-    track = match_vision_to_track(v_ego, lead_msg, tracks)
+    track = match_vision_to_track(v_ego, lead_msg, tracks, check_lateral=use_lead_lateral_sanity(CP))
   else:
     track = None
 
