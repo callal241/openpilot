@@ -136,7 +136,14 @@ def match_vision_to_track(v_ego: float, lead: capnp._DynamicStructReader, tracks
   # stationary radar points can be false positives
   dist_sane = abs(track.dRel - offset_vision_dist) < max([(offset_vision_dist)*.25, 5.0])
   vel_sane = (abs(track.vRel + v_ego - lead.v[0]) < 10) or (v_ego + track.vRel > 3)
-  if dist_sane and vel_sane:
+  lat_sane = True
+  if math.isfinite(track.yRel):
+    vision_y = -lead.y[0]
+    lat_tolerance = lead.yStd[0] * 3.0
+    if not math.isfinite(lat_tolerance):
+      lat_tolerance = 1.5
+    lat_sane = abs(track.yRel - vision_y) < max(lat_tolerance, 1.5)
+  if dist_sane and vel_sane and lat_sane:
     return track
   else:
     return None

@@ -1,10 +1,25 @@
+from types import SimpleNamespace
+
 import cereal.messaging as messaging
 
 from opendbc.car.toyota.values import CAR as TOYOTA
+from openpilot.selfdrive.controls.radard import RADAR_TO_CAMERA, match_vision_to_track
 from openpilot.selfdrive.test.process_replay import replay_process_with_name
 
 
 class TestLeads:
+  def test_radar_match_rejects_wrong_lane_track(self):
+    lead = SimpleNamespace(x=[50.0], y=[0.0], v=[10.0], xStd=[1.0], yStd=[0.3], vStd=[1.0])
+    wrong_lane_track = SimpleNamespace(dRel=lead.x[0] - RADAR_TO_CAMERA, yRel=4.0, vRel=0.0)
+
+    assert match_vision_to_track(10.0, lead, {1: wrong_lane_track}) is None
+
+  def test_radar_match_accepts_laterally_consistent_track(self):
+    lead = SimpleNamespace(x=[50.0], y=[0.0], v=[10.0], xStd=[1.0], yStd=[0.3], vStd=[1.0])
+    same_lane_track = SimpleNamespace(dRel=lead.x[0] - RADAR_TO_CAMERA, yRel=0.4, vRel=0.0)
+
+    assert match_vision_to_track(10.0, lead, {1: same_lane_track}) is same_lane_track
+
   def test_radar_fault(self):
     # if there's no radar-related can traffic, radard should either not respond or respond with an error
     # this is tightly coupled with underlying car radar_interface implementation, but it's a good sanity check
