@@ -14,8 +14,8 @@ Ecu = CarParams.Ecu
 
 
 class CarControllerParams:
-  ACCEL_MIN = -3.5 # m/s
-  ACCEL_MAX = 2.0 # m/s
+  ACCEL_MIN = -4.0 # m/s
+  ACCEL_MAX = 4.0 # m/s
 
   def __init__(self, CP):
     self.STEER_DELTA_UP = 3
@@ -36,7 +36,7 @@ class CarControllerParams:
 
     # To determine the limit for your car, find the maximum value that the stock LKAS will request.
     # If the max stock LKAS request is <384, add your car to this list.
-    elif CP.carFingerprint in (CAR.GENESIS_G80, CAR.HYUNDAI_ELANTRA, CAR.HYUNDAI_ELANTRA_GT_I30, CAR.HYUNDAI_IONIQ,
+    elif CP.carFingerprint in (CAR.HYUNDAI_ELANTRA, CAR.HYUNDAI_ELANTRA_GT_I30, CAR.HYUNDAI_IONIQ,
                                CAR.HYUNDAI_IONIQ_EV_LTD, CAR.HYUNDAI_SANTA_FE_PHEV_2022, CAR.HYUNDAI_SONATA_LF, CAR.KIA_FORTE, CAR.KIA_NIRO_PHEV,
                                CAR.KIA_OPTIMA_H, CAR.KIA_OPTIMA_H_G4_FL, CAR.KIA_SORENTO):
       self.STEER_MAX = 255
@@ -614,7 +614,7 @@ class CAR(Platforms):
   )
   GENESIS_G80 = HyundaiPlatformConfig(
     [HyundaiCarDocs("Genesis G80 2018-19", "All", car_parts=CarParts.common([CarHarness.hyundai_h]))],
-    CarSpecs(mass=2060, wheelbase=3.01, steerRatio=16.5),
+    CarSpecs(mass=2060, wheelbase=3.01, steerRatio=17.6),
     flags=HyundaiFlags.MANDO_RADAR,
   )
   GENESIS_G80_2ND_GEN_FL = HyundaiCanFDPlatformConfig(
