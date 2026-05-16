@@ -36,6 +36,18 @@ The radar is not missing the required track messages:
 
 The issue is in lead fusion/selection, not in enabling the radar or getting basic radar traffic from the radar.
 
+## Radar versus camera confirmation
+
+The route shows real radar CAN traffic, not only camera/model leads:
+
+- `modelV2` is the camera/model output path. It was present, but it is separate from the raw CAN evidence.
+- Raw CAN address range `0x500..0x51f` was present with all 32 sequential radar track slots.
+- On bus 1, each `0x500..0x51e` track message appeared 17,518 times, and trigger message `0x51f` appeared 17,517 times.
+- The Hyundai radar interface parses exactly that range. In `opendbc_repo/opendbc/car/hyundai/radar_interface.py`, `RADAR_START_ADDR = 0x500`, `RADAR_MSG_COUNT = 32`, the `CANParser` subscribes to `RADAR_TRACK_500` through `RADAR_TRACK_51f`, and the trigger is `0x51f`.
+- The route produced 17,516 `liveTracks` events from that radar path, with 15,844 non-empty events.
+
+Some radar IDs also appeared on mirrored/logged buses, but bus 1 is the important one because the Hyundai Mando radar parser subscribes to bus 1. This confirms the bad tracks are parsed radar points, not just the stock camera or openpilot vision model.
+
 Bad-match evidence from the route:
 
 - There were 5,696 samples with both raw radar track and model lead data available.
