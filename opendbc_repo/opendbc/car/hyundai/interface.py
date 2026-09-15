@@ -138,9 +138,6 @@ class CarInterface(CarInterfaceBase):
     ret.radarUnavailable = Bus.radar not in DBC[ret.carFingerprint] or not (radar_tracks_seen or g80_direct_mando_radar)
     ret.openpilotLongitudinalControl = alpha_long and ret.alphaLongitudinalAvailable
     ret.pcmCruise = not ret.openpilotLongitudinalControl
-    ret.startingState = True
-    ret.vEgoStarting = 0.1
-    ret.startAccel = 1.0
     ret.longitudinalActuatorDelay = 0.2
 
     if ret.openpilotLongitudinalControl:

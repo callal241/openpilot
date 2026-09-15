@@ -1,10 +1,6 @@
 # distutils: language = c++
 # cython: c_string_encoding=ascii, language_level=3
 
-import sys
-import numpy as np
-cimport numpy as cnp
-from cython.view cimport array
 from libc.string cimport memcpy
 from libc.stdint cimport uint32_t, uint64_t
 from libcpp cimport bool
@@ -13,19 +9,12 @@ from libcpp.string cimport string
 from .visionipc cimport VisionIpcServer as cppVisionIpcServer
 from .visionipc cimport VisionIpcClient as cppVisionIpcClient
 from .visionipc cimport VisionBuf as cppVisionBuf
-from .visionipc cimport VisionIpcBufExtra
+from .visionipc cimport VisionIpcBufExtra, VisionStreamType
 from .visionipc cimport get_endpoint_name as cpp_get_endpoint_name
 
 
 def get_endpoint_name(string name, VisionStreamType stream):
   return cpp_get_endpoint_name(name, stream).decode('utf-8')
-
-
-cpdef enum VisionStreamType:
-  VISION_STREAM_ROAD
-  VISION_STREAM_DRIVER
-  VISION_STREAM_WIDE_ROAD
-  VISION_STREAM_MAP
 
 
 cdef class VisionBuf:
@@ -37,7 +26,8 @@ cdef class VisionBuf:
 
   @property
   def data(self):
-    return np.asarray(<cnp.uint8_t[:self.buf.len]> self.buf.addr)
+    cdef unsigned char[:] data = <unsigned char[:self.buf.len]> self.buf.addr
+    return memoryview(data)
 
   @property
   def width(self):
@@ -62,6 +52,10 @@ cdef class VisionBuf:
   @property
   def fd(self):
     return self.buf.fd
+
+  @property
+  def frame_id(self):
+    return self.buf.get_frame_id()
 
 
 cdef class VisionIpcServer:
@@ -88,6 +82,7 @@ cdef class VisionIpcServer:
     extra.frame_id = frame_id
     extra.timestamp_sof = timestamp_sof
     extra.timestamp_eof = timestamp_eof
+    extra.valid = False
 
     self.server.send(buf, &extra, False)
 
@@ -149,7 +144,10 @@ cdef class VisionIpcClient:
     return self.extra.valid
 
   def recv(self, int timeout_ms=100):
-    buf = self.client.recv(&self.extra, timeout_ms)
+    cdef cppVisionBuf * buf
+    # release the GIL, this can block for timeout_ms
+    with nogil:
+      buf = self.client.recv(&self.extra, timeout_ms)
     if not buf:
       return None
     return VisionBuf.create(buf)

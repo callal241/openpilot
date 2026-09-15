@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-import ctypes, pathlib, argparse, pickle, dataclasses, threading
-from typing import Generator
+import ctypes, pathlib, argparse, pickle, dataclasses, threading, itertools
+from typing import Any, Generator
 from tinygrad.helpers import temp, unwrap, DEBUG
 from tinygrad.runtime.ops_amd import ProfileSQTTEvent
 from tinygrad.runtime.autogen import rocprof
+from tinygrad.renderer.amd.dsl import Inst
+from tinygrad.device import ProfileDeviceEvent, ProfileProgramEvent
+from test.amd.disasm import disasm
 
 @dataclasses.dataclass(frozen=True)
 class InstExec:
@@ -34,18 +37,18 @@ class WaveExec(WaveSlot):
     insts_array = (struct*(len(self.insts)//sz)).from_buffer(self.insts)
     for inst in insts_array:
       inst_typ = rocprof.enum_rocprofiler_thread_trace_decoder_inst_category_t.get(inst.category)
-      yield InstExec(inst_typ, inst.pc.address, inst.stall, inst.duration, inst.time)
+      yield InstExec(inst_typ or "UNKNOWN", inst.pc.address, inst.stall, inst.duration, inst.time)
 
 @dataclasses.dataclass(frozen=True)
 class OccEvent(WaveSlot):
   time:int
   start:int
 
-RunKey = tuple[str, int]
+RunKey = tuple[int, int]
 
 class _ROCParseCtx:
-  def __init__(self, sqtt_evs:list[ProfileSQTTEvent], disasms:dict[str, dict[int, tuple[str, int]]]):
-    self.sqtt_evs, self.disasms = iter(sqtt_evs), disasms
+  def __init__(self, sqtt_evs:list[ProfileSQTTEvent], disasms:dict[int, dict[int, Inst]]):
+    self.sqtt_evs, self.disasms = iter(sqtt_evs), {k:{k2:(disasm(v2), v2.size()) for k2,v2 in v.items()} for k,v in disasms.items()}
     self.inst_execs:dict[RunKey, list[WaveExec]] = {}
     self.occ_events:dict[RunKey, list[OccEvent]] = {}
 
@@ -71,7 +74,7 @@ class _ROCParseCtx:
     self.inst_execs.setdefault(unwrap(self.active_run), []).append(WaveExec(ev.wave_id, ev.cu, ev.simd, unwrap(self.active_se), ev.begin_time,
                                                                              ev.end_time, insts_blob))
 
-def decode(sqtt_evs:list[ProfileSQTTEvent], disasms:dict[str, dict[int, tuple[str, int]]]) -> _ROCParseCtx:
+def decode(sqtt_evs:list[ProfileSQTTEvent], disasms:dict[int, dict[int, Inst]]) -> _ROCParseCtx:
   ROCParseCtx = _ROCParseCtx(sqtt_evs, disasms)
 
   @rocprof.rocprof_trace_decoder_se_data_callback_t
@@ -116,7 +119,7 @@ def decode(sqtt_evs:list[ProfileSQTTEvent], disasms:dict[str, dict[int, tuple[st
     nonlocal exc
     try: rocprof.rocprof_trace_decoder_parse_data(copy_cb, trace_cb, isa_cb, None)
     except AttributeError as e:
-      exc = RuntimeError("Failed to find rocprof-trace-decoder. Run sudo ./extra/sqtt/install_sqtt_decoder.py to install")
+      exc = RuntimeError("Failed to find rocprof-trace-decoder. Run sudo ./extra/sqtt/install_rocprof_decoder.py to install")
       exc.__cause__ = e
   (t:=threading.Thread(target=worker, daemon=True)).start()
   t.join()
@@ -124,17 +127,34 @@ def decode(sqtt_evs:list[ProfileSQTTEvent], disasms:dict[str, dict[int, tuple[st
     raise exc
   return ROCParseCtx
 
-def print_data(data:dict) -> None:
-  from tabulate import tabulate
-  # plaintext
-  if "src" in data: print(data["src"])
-  # table format
-  elif "cols" in data:
-    print(tabulate([r[:len(data["cols"])] for r in data["rows"]], headers=data["cols"], tablefmt="github"))
+def unpack_insts(w:WaveExec, pc_to_inst:dict[int, Inst]) -> dict:
+  columns = ["PC", "Instruction", "Hits", "Cycles", "Stall", "Type"]
+  inst_columns = ["N", "Clk", "Idle", "Dur", "Stall"]
+  # Idle:     The total time gap between the completion of previous instruction and the beginning of the current instruction.
+  #           The idle time can be caused by:
+  #             * Arbiter loss
+  #             * Source or destination register dependency
+  #             * Instruction cache miss
+  # Stall:    The total number of cycles the hardware pipe couldn't issue an instruction.
+  # Duration: Total latency in cycles, defined as "Stall time + Issue time" for gfx9 or "Stall time + Execute time" for gfx10+.
+  prev_instr = w.begin_time
+  start_pc = None
+  rows:dict[int, dict[str, Any]] = {}
+  for pc, inst in pc_to_inst.items():
+    if start_pc is None: start_pc = pc
+    rows[pc] = {"pc":pc-start_pc, "inst":str(inst), "hit_count":0, "dur":0, "stall":0, "type":"", "hits":{"cols":inst_columns, "rows":[]}}
+  for e in w.unpack_insts():
+    if not (row:=rows[e.pc]).get("type"): row["type"] = str(e.typ).split("_")[-1]
+    row["hit_count"] += 1
+    row["dur"] += e.dur
+    row["stall"] += e.stall
+    row["hits"]["rows"].append((row["hit_count"]-1, e.time, max(0, e.time-prev_instr), e.dur, e.stall))
+    prev_instr = max(prev_instr, e.time + e.dur)
+  return {"rows":[tuple(v.values()) for v in rows.values()], "cols":columns}
 
 def main() -> None:
-  import tinygrad.viz.serve as viz
-  viz.ctxs = []
+  from tabulate import tabulate
+  from tinygrad.viz.serve import amd_decode
 
   parser = argparse.ArgumentParser()
   parser.add_argument('--profile', type=pathlib.Path, metavar="PATH", help='Path to profile (optional file, default: latest profile)',
@@ -145,26 +165,28 @@ def main() -> None:
 
   with args.profile.open("rb") as f: profile = pickle.load(f)
 
-  viz.get_profile(profile)
-
   # List all kernels
   if args.kernel is None:
-    for c in viz.ctxs:
-      print(c["name"])
-      for s in c["steps"]: print("  "+s["name"])
+    for p in profile:
+      if isinstance(p, ProfileProgramEvent) and p.device.startswith("AMD"): print(p.name)
     return None
 
-  # Find kernel trace
-  trace = next((c for c in viz.ctxs if c["name"] == f"Exec {args.kernel}"), None)
-  if not trace: raise RuntimeError(f"no matching trace for {args.kernel}")
-  n = 0
-  for s in trace["steps"]:
-    if "PKTS" in s["name"]: continue
-    print(s["name"])
-    data = viz.get_render(s["query"])
-    print_data(data)
-    n += 1
-    if n > args.n: break
+  prg = next((p for p in profile if isinstance(p, ProfileProgramEvent) and p.name == args.kernel), None)
+  dev = next((p for p in profile if isinstance(p, ProfileDeviceEvent) and p.device == prg.device), None)
+  assert prg is not None and dev is not None, "must have program binary and device props"
+  target = f"gfx{dev.props['gfx_target_version']//1000}"
+  sqtt = [p for p in profile if isinstance(p, ProfileSQTTEvent) and p.kern == prg.tag]
+
+  pc_to_inst = {addr+prg.base:inst for addr,inst in amd_decode(prg.lib, target).items()}
+  rctx = decode(sqtt, {prg.tag:pc_to_inst})
+  waves = sorted(itertools.chain.from_iterable(rctx.inst_execs.values()), key=lambda w:(w.se, w.cu, w.simd, w.wave_id, w.begin_time))
+  if not waves: raise RuntimeError(f"no instruction traces for {args.kernel}")
+  run_numbers:dict[str, itertools.count] = {}
+  for w in itertools.islice(waves, args.n):
+    if w.wave_loc not in run_numbers: run_numbers[w.wave_loc] = itertools.count()
+    print(f"{w.wave_loc} N:{next(run_numbers[w.wave_loc])} Total Cycles:{w.end_time-w.begin_time}")
+    table = unpack_insts(w, pc_to_inst)
+    print(tabulate([r[:len(table["cols"])] for r in table["rows"]], headers=table["cols"], tablefmt="github"))
 
 if __name__ == "__main__":
   main()

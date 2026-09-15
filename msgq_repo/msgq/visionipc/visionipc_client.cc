@@ -14,9 +14,13 @@
 static int connect_to_vipc_server(const std::string &name, bool blocking) {
   const std::string ipc_path = get_ipc_path(name);
   int socket_fd = ipc_connect(ipc_path.c_str());
+  bool logged_retry = false;
   while (socket_fd < 0 && blocking) {
-    std::cout << "VisionIpcClient connecting" << std::endl;
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    if (!logged_retry) {
+      std::cout << "VisionIpcClient connecting" << std::endl;
+      logged_retry = true;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     socket_fd = ipc_connect(ipc_path.c_str());
   }
   return socket_fd;
@@ -126,12 +130,12 @@ std::set<VisionStreamType> VisionIpcClient::getAvailableStreams(const std::strin
   if (socket_fd < 0) {
     return {};
   }
-  // Send VISION_STREAM_MAX to server to request available streams
-  int request = VISION_STREAM_MAX;
+  // Send VISION_STREAM_LIST to server to request available streams
+  VisionStreamType request = VISION_STREAM_LIST;
   int r = ipc_sendrecv_with_fds(true, socket_fd, &request, sizeof(request), nullptr, 0, nullptr);
   assert(r == sizeof(request));
 
-  VisionStreamType available_streams[VISION_STREAM_MAX] = {};
+  VisionStreamType available_streams[VISIONIPC_MAX_STREAMS] = {};
   r = ipc_sendrecv_with_fds(false, socket_fd, &available_streams, sizeof(available_streams), nullptr, 0, nullptr);
   if (r < 0) {
     // only expected error is server shutting down
