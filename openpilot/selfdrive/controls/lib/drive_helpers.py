@@ -11,7 +11,7 @@ MIN_STABLE_DELAY = 0.3
 
 # EU guidelines
 MAX_LATERAL_JERK = 5.0  # m/s^3
-MAX_LATERAL_ACCEL_NO_ROLL = 3.0  # m/s^2
+MAX_LATERAL_ACCEL_NO_ROLL = 4.5  # m/s^2 (G80: stock cap 3.0 allowed only ~42deg wheel at 15 m/s; 4.5 = 0.46g, below tire grip ~0.8g, enables full intersection turns)
 
 
 def should_stop(v_ego: float, a_target: float) -> bool:
