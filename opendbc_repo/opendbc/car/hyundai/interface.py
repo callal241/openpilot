@@ -125,6 +125,9 @@ class CarInterface(CarInterfaceBase):
     if ret.flags & HyundaiFlags.ALT_LIMITS_2:
       ret.safetyConfigs[-1].safetyParam |= HyundaiSafetyFlags.ALT_LIMITS_2.value
 
+    if ret.flags & HyundaiFlags.MAX_TORQUE_511:
+      ret.safetyConfigs[-1].safetyParam |= HyundaiSafetyFlags.MAX_TORQUE_511.value
+
       # see https://github.com/commaai/opendbc/pull/1137/
       ret.dashcamOnly = True
 

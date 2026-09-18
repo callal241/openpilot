@@ -26,7 +26,10 @@ class CarControllerParams:
     self.STEER_THRESHOLD = 150
     self.STEER_STEP = 1  # 100 Hz
 
-    if CP.flags & HyundaiFlags.CANFD:
+    if CP.flags & HyundaiFlags.MAX_TORQUE_511:
+      # full EPS range for intersection turns; needs matching panda safety limit (MAX_TORQUE_511 flag)
+      self.STEER_MAX = 511
+    elif CP.flags & HyundaiFlags.CANFD:
       self.STEER_MAX = 384
       self.STEER_DRIVER_ALLOWANCE = 250
       self.STEER_DRIVER_MULTIPLIER = 2
@@ -68,6 +71,7 @@ class HyundaiSafetyFlags(IntFlag):
   CANFD_LKA_STEER_MSG_ALT = 128
   FCEV_GAS = 256
   ALT_LIMITS_2 = 512
+  MAX_TORQUE_511 = 1024
 
 
 # Hyundai/Kia/Genesis SCC (Smart Cruise Control) and steering architecture:
@@ -148,6 +152,9 @@ class HyundaiFlags(IntFlag):
   FCEV = 2 ** 25
 
   ALT_LIMITS_2 = 2 ** 26
+
+  # full-EPS steering torque (511 = 11-bit signal max) for deep intersection turns
+  MAX_TORQUE_511 = 2 ** 27
 
 
 @dataclass
@@ -618,7 +625,7 @@ class CAR(Platforms):
   GENESIS_G80 = HyundaiPlatformConfig(
     [HyundaiCarDocs("Genesis G80 2018-19", "All", car_parts=CarParts.common([CarHarness.hyundai_h]))],
     CarSpecs(mass=3260, wheelbase=3.01, steerRatio=17.6),
-    flags=HyundaiFlags.MANDO_RADAR,
+    flags=HyundaiFlags.MANDO_RADAR | HyundaiFlags.MAX_TORQUE_511,
   )
   GENESIS_G80_2ND_GEN_FL = HyundaiCanFDPlatformConfig(
     [HyundaiCarDocs("Genesis G80 (2.5T Advanced Trim, with HDA II) 2024", "Highway Driving Assist II", car_parts=CarParts.common([CarHarness.hyundai_p]))],

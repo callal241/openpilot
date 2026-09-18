@@ -224,6 +224,8 @@ static bool hyundai_tx_hook(const CANPacket_t *msg) {
   const TorqueSteeringLimits HYUNDAI_STEERING_LIMITS = HYUNDAI_LIMITS(384, 3, 7);
   const TorqueSteeringLimits HYUNDAI_STEERING_LIMITS_ALT = HYUNDAI_LIMITS(270, 2, 3);
   const TorqueSteeringLimits HYUNDAI_STEERING_LIMITS_ALT_2 = HYUNDAI_LIMITS(170, 2, 3);
+  // G80 full-EPS torque: 384 stalls at ~160deg in 7 m/s turns; 511 = signal max
+  const TorqueSteeringLimits HYUNDAI_STEERING_LIMITS_511 = HYUNDAI_LIMITS(511, 3, 7);
 
   bool tx = true;
 
@@ -270,7 +272,8 @@ static bool hyundai_tx_hook(const CANPacket_t *msg) {
     int desired_torque = ((GET_BYTES(msg, 0, 4) >> 16) & 0x7ffU) - 1024U;
     bool steer_req = GET_BIT(msg, 27U);
 
-    const TorqueSteeringLimits limits = hyundai_alt_limits_2 ? HYUNDAI_STEERING_LIMITS_ALT_2 :
+    const TorqueSteeringLimits limits = hyundai_max_torque_511 ? HYUNDAI_STEERING_LIMITS_511 :
+                                        hyundai_alt_limits_2 ? HYUNDAI_STEERING_LIMITS_ALT_2 :
                                         hyundai_alt_limits ? HYUNDAI_STEERING_LIMITS_ALT : HYUNDAI_STEERING_LIMITS;
 
     if (steer_torque_cmd_checks(desired_torque, steer_req, limits)) {
