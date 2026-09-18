@@ -128,9 +128,6 @@ class CarInterface(CarInterfaceBase):
     if ret.flags & HyundaiFlags.MAX_TORQUE_511:
       ret.safetyConfigs[-1].safetyParam |= HyundaiSafetyFlags.MAX_TORQUE_511.value
 
-      # see https://github.com/commaai/opendbc/pull/1137/
-      ret.dashcamOnly = True
-
     # Common longitudinal control setup
 
     # Some DH Genesis G80 direct-radar installs output Mando radar points after
