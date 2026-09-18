@@ -29,6 +29,11 @@ class CarControllerParams:
     if CP.flags & HyundaiFlags.MAX_TORQUE_511:
       # full EPS range for intersection turns; needs matching panda safety limit (MAX_TORQUE_511 flag)
       self.STEER_MAX = 511
+      # gentler torque rate limits (match ALT_LIMITS 384-baseline) so the Mando EPS
+      # does not raise CF_Mdps_ToiUnavail/ToiFlt on fast torque steps while keeping
+      # 511 headroom for deep intersection turns.
+      self.STEER_DELTA_UP = 2
+      self.STEER_DELTA_DOWN = 3
     elif CP.flags & HyundaiFlags.CANFD:
       self.STEER_MAX = 384
       self.STEER_DRIVER_ALLOWANCE = 250
