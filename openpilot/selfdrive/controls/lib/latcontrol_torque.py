@@ -70,6 +70,12 @@ class LatControlTorque(LatControl):
     measured_curvature = -VM.calc_curvature(math.radians(CS.steeringAngleDeg - params.angleOffsetDeg), CS.vEgo, params.roll)
     measurement = measured_curvature * CS.vEgo ** 2
     future_desired_lateral_accel = desired_curvature * CS.vEgo ** 2
+    # The model can request more lateral acceleration than this EPS can deliver.
+    # Clipping to the max accel achievable at STEER_MAX torque (the PID's own
+    # output limit) makes the target trackable instead of letting the controller
+    # saturate and understeer the turn (G80 EPS faults above ~384 torque).
+    max_deliverable_lat_accel = self.lateral_accel_from_torque(self.steer_max, self.torque_params)
+    future_desired_lateral_accel = float(np.clip(future_desired_lateral_accel, -max_deliverable_lat_accel, max_deliverable_lat_accel))
     self.lat_accel_request_buffer.append(future_desired_lateral_accel)
 
     roll_compensation = params.roll * ACCELERATION_DUE_TO_GRAVITY
