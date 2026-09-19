@@ -27,11 +27,12 @@ class CarControllerParams:
     self.STEER_STEP = 1  # 100 Hz
 
     if CP.flags & HyundaiFlags.MAX_TORQUE_511:
-      # full EPS range for intersection turns; needs matching panda safety limit (MAX_TORQUE_511 flag)
-      self.STEER_MAX = 511
-      # gentler torque rate limits (match ALT_LIMITS 384-baseline) so the Mando EPS
-      # does not raise CF_Mdps_ToiUnavail/ToiFlt on fast torque steps while keeping
-      # 511 headroom for deep intersection turns.
+      # Mando EPS on this G80 hard-faults (CF_Mdps_ToiUnavail) when commanded torque
+      # reaches ~430, at any wheel angle (observed trip values 400/418/431-438, max
+      # safe 428). 511 is not deliverable on this unit, so cap at the validated 384
+      # which has zero observed faults and a margin below the fault floor.
+      self.STEER_MAX = 384
+      # gentler torque rate limits (match ALT_LIMITS 384-baseline).
       self.STEER_DELTA_UP = 2
       self.STEER_DELTA_DOWN = 3
     elif CP.flags & HyundaiFlags.CANFD:
