@@ -143,17 +143,6 @@ class Controls(ControlsExt):
       new_desired_curvature = self.sm['lateralManeuverPlan'].desiredCurvature if CC.latActive else self.curvature
     else:
       new_desired_curvature = model_v2.action.desiredCurvature if CC.latActive else self.curvature
-    if CC.latActive and not CS.steeringPressed and CS.vEgo < 12.0:
-      # Low-speed curvature gain (tighter intersection turns): the driver model
-      # under-commits at low speed, so the wheel never reaches lockout by itself.
-      # Amplify the demanded curvature so the PID saturates at full EPS torque
-      # earlier and holds it through the apex. Strictly bounded: clip_curvature
-      # caps the result at 4.5/v^2 with a 5.0 m/s^3 jerk rate limit, and the
-      # torque controller's own output limit (steer_max * latAccelFactor =
-      # 384 * 2.0647) is applied downstream -- this can only saturate the
-      # actuator at the proven-safe 384 limit, never exceed it. Gain: 1.5x at
-      # standstill -> 1.0x at 12 m/s (linear), no effect above 12 m/s.
-      new_desired_curvature *= 1.0 + 1.5 * (12.0 - CS.vEgo) / 12.0
     self.desired_curvature, curvature_limited = clip_curvature(CS.vEgo, self.desired_curvature, new_desired_curvature, lp.roll)
     lat_delay = self.sm["lateralDelay"].lateralDelay + LAT_SMOOTH_SECONDS
 
