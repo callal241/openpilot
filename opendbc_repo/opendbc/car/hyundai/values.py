@@ -32,9 +32,10 @@ class CarControllerParams:
       # safe 428). 511 is not deliverable on this unit, so cap at the validated 384
       # which has zero observed faults and a margin below the fault floor.
       self.STEER_MAX = 384
-      # gentler torque rate limits (match ALT_LIMITS 384-baseline).
-      self.STEER_DELTA_UP = 2
-      self.STEER_DELTA_DOWN = 3
+      # Match 2022 Santa Fe steering rate limits while retaining the G80-specific
+      # 384 torque cap and MAX_TORQUE_511 safety configuration.
+      self.STEER_DELTA_UP = 3
+      self.STEER_DELTA_DOWN = 7
     elif CP.flags & HyundaiFlags.CANFD:
       self.STEER_MAX = 384
       self.STEER_DRIVER_ALLOWANCE = 250
