@@ -96,6 +96,30 @@ class CarController(CarControllerBase, EsccCarController, LeadDataCarController,
     if not CC.latActive:
       apply_torque = 0
 
+    # G80 low-speed steering diagnostics. This is intentionally read-only: it does
+    # not alter steering commands or fault-avoidance behavior. Log at 5 Hz below
+    # ~18 mph while lateral control is active, and immediately whenever the
+    # high-angle fault-avoidance logic drops the LKAS request bit.
+    if self.car_fingerprint == CAR.GENESIS_G80 and CC.latActive and CS.out.vEgo < 8.0 and \
+       (self.frame % 20 == 0 or not apply_steer_req):
+      print(
+        "G80_STEER_DIAG "
+        f"frame={self.frame} "
+        f"vEgo={CS.out.vEgo:.3f} "
+        f"angleDeg={CS.out.steeringAngleDeg:.2f} "
+        f"driverTorque={CS.out.steeringTorque:.2f} "
+        f"epsTorque={CS.out.steeringTorqueEps:.2f} "
+        f"actuatorTorque={actuators.torque:.4f} "
+        f"desiredCurvature={actuators.curvature:.6f} "
+        f"newTorque={new_torque} "
+        f"applyTorque={apply_torque} "
+        f"steerMax={self.params.STEER_MAX} "
+        f"steerReq={int(apply_steer_req)} "
+        f"angleCounter={self.angle_limit_counter} "
+        f"mdpsActive={getattr(CS, 'steer_state', -1)}",
+        flush=False,
+      )
+
     self.apply_torque_last = apply_torque
 
     # accel + longitudinal
