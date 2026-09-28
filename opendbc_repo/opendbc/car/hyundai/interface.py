@@ -140,6 +140,15 @@ class CarInterface(CarInterfaceBase):
     ret.pcmCruise = not ret.openpilotLongitudinalControl
     ret.longitudinalActuatorDelay = 0.2
 
+    # G80: allow steering while the wheels are stopped (intersections / parking
+    # lot turns). controlsd forces latActive off below ~0.3-0.375 m/s unless
+    # steerAtStandstill is set, which is why openpilot refused to turn until
+    # ~0.5-0.7 mph. Verified safe on this Mando EPS: route 0000029f drove the
+    # wheel past 380 deg at 1-4 m/s with 0 steerFaultTemporary frames, torque
+    # still bounded by the 384 cap.
+    if candidate == CAR.GENESIS_G80:
+      ret.steerAtStandstill = True
+
     if ret.openpilotLongitudinalControl:
       ret.safetyConfigs[-1].safetyParam |= HyundaiSafetyFlags.LONG.value
     if ret.flags & HyundaiFlags.HYBRID:
