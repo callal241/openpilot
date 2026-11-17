@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import time
+
 import numpy as np
 from functools import cache
 import threading
@@ -114,10 +116,18 @@ class Mic:
     import sounddevice as sd
     patch_sounddevice(sd)
 
-    with self.get_stream(sd) as stream:
-      cloudlog.info(f"micd stream started: {stream.samplerate=} {stream.channels=} {stream.dtype=} {stream.device=}, {stream.blocksize=}")
-      while True:
-        self.update()
+    while True:
+      try:
+        with self.get_stream(sd) as stream:
+          cloudlog.info(f"micd stream started: {stream.samplerate=} {stream.channels=} {stream.dtype=} {stream.device=}, {stream.blocksize=}")
+          while True:
+            try:
+              self.update()
+            except Exception:
+              cloudlog.exception("micd update failed")
+      except Exception as e:
+        cloudlog.exception(f"micd stream failed: {e!r}, reopening in 3s")
+        time.sleep(3)
 
 
 def main():

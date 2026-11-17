@@ -154,7 +154,8 @@ class SelfdriveD(CruiseHelper):
     self.state_machine = StateMachine()
     self.rk = Ratekeeper(100, print_delay_threshold=None)
 
-    self.ignored_processes = {'mapd', }
+    # non-safety daemons whose downtime should not raise processNotRunning (NO_ENTRY + SOFT_DISABLE)
+    self.ignored_processes = {'mapd', 'micd', 'soundd'}
 
     # Determine startup event
     is_remote = build_metadata.openpilot.comma_remote or build_metadata.openpilot.sunnypilot_remote
