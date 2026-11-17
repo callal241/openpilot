@@ -18,7 +18,9 @@ def get_file_handler():
   return handler
 
 class SwaglogRotatingFileHandler(BaseRotatingHandler):
-  def __init__(self, base_filename, interval=60, max_bytes=1024*256, backup_count=2500, encoding=None):
+  # 500 files of 256KB ~= 128MB, ~3 hours of daemon logs at 60s rollover. Keeps recent
+  # history for debugging while bounding /data/log so background logs don't fill the disk.
+  def __init__(self, base_filename, interval=60, max_bytes=1024*256, backup_count=500, encoding=None):
     super().__init__(base_filename, mode="a", encoding=encoding, delay=True)
     self.base_filename = base_filename
     self.interval = interval # seconds
