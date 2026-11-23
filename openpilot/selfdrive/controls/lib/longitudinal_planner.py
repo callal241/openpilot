@@ -51,6 +51,7 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
     self.fcw = False
     self.dt = dt
     self.accel_boost = AccelBoost()
+    self.v_nav_cap = None  # set by plannerd from the NavController (m/s) or None
 
     self.v_desired_filter = FirstOrderFilter(init_v, 2.0, self.dt)
     self.a_cruise = init_a
@@ -91,6 +92,11 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
 
     # Get new v_cruise and a_target from Smart Cruise Control and Speed Limit Assist
     v_cruise, self.output_a_target = LongitudinalPlannerSP.update_targets(self, sm, self.v_desired_filter.x, self.output_a_target, v_cruise)
+
+    # Nav approach speed cap (pre-turn deceleration): only ever lowers the target speed,
+    # so a lead car requiring slower speeds still wins via the MPC candidate
+    if self.v_nav_cap is not None:
+      v_cruise = min(v_cruise, self.v_nav_cap)
 
     self.mpc.set_weights(prev_accel_constraint, personality=sm['selfdriveState'].personality)
     if self.CP.openpilotLongitudinalControl:

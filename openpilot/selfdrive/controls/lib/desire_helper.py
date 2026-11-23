@@ -33,11 +33,13 @@ class DesireHelper:
   def get_lane_change_direction(CS):
     return LaneChangeDirection.left if CS.leftBlinker else LaneChangeDirection.right
 
-  def update(self, carstate, lateral_active, lane_change_prob, left_edge_detected=False, right_edge_detected=False):
+  def update(self, carstate, lateral_active, lane_change_prob, left_edge_detected=False, right_edge_detected=False, nav_lane_change=None):
+    # nav_lane_change: LaneChangeDirection or None; an automated (route-driven) lane change request
     self.alc.update_params()
     self.lane_turn_controller.update_params()
     v_ego = carstate.vEgo
     one_blinker = carstate.leftBlinker != carstate.rightBlinker
+    nav_request = nav_lane_change is not None
     below_lane_change_speed = v_ego < LANE_CHANGE_SPEED_MIN
 
     # Lane turn controller update
@@ -45,20 +47,22 @@ class DesireHelper:
                                                left_blinker=carstate.leftBlinker, right_blinker=carstate.rightBlinker, v_ego=v_ego)
     self.lane_turn_direction = self.lane_turn_controller.get_turn_direction()
 
-    if not lateral_active or self.lane_change_timer > LANE_CHANGE_TIME_MAX or self.alc.lane_change_set_timer == AutoLaneChangeMode.OFF:
+    alc_off = self.alc.lane_change_set_timer == AutoLaneChangeMode.OFF
+    if not lateral_active or self.lane_change_timer > LANE_CHANGE_TIME_MAX or (alc_off and not nav_request):
       self.lane_change_state = LaneChangeState.off
       self.lane_change_direction = LaneChangeDirection.none
       self.lane_change_timer = 0.0
     else:
-      if self.lane_change_state == LaneChangeState.off and one_blinker and not self.prev_one_blinker and not below_lane_change_speed:
+      if self.lane_change_state == LaneChangeState.off and not below_lane_change_speed and \
+         ((one_blinker and not self.prev_one_blinker) or nav_request):
         self.lane_change_state = LaneChangeState.preLaneChange
         self.lane_change_timer = 0.0
         # Initialize lane change direction to prevent UI alert flicker
-        self.lane_change_direction = self.get_lane_change_direction(carstate)
+        self.lane_change_direction = nav_lane_change if nav_request else self.get_lane_change_direction(carstate)
 
       elif self.lane_change_state == LaneChangeState.preLaneChange:
         # Update lane change direction
-        self.lane_change_direction = self.get_lane_change_direction(carstate)
+        self.lane_change_direction = nav_lane_change if nav_request else self.get_lane_change_direction(carstate)
 
         torque_applied = carstate.steeringPressed and \
                          ((carstate.steeringTorque > 0 and self.lane_change_direction == LaneChangeDirection.left) or
@@ -72,11 +76,11 @@ class DesireHelper:
 
         self.alc.update_lane_change(blindspot_detected, edge_detected, carstate.brakePressed, torque_applied)
 
-        if not one_blinker or below_lane_change_speed:
+        if (not one_blinker and not nav_request) or below_lane_change_speed:
           self.lane_change_state = LaneChangeState.off
           self.lane_change_direction = LaneChangeDirection.none
           self.lane_change_timer = 0.0
-        elif (torque_applied or self.alc.auto_lane_change_allowed) and not self.alc.lane_change_blocked:
+        elif (torque_applied or self.alc.auto_lane_change_allowed or nav_request) and not self.alc.lane_change_blocked:
           self.lane_change_state = LaneChangeState.laneChangeStarting
           self.lane_change_timer = 0.0
 
@@ -85,9 +89,9 @@ class DesireHelper:
 
         if lane_change_prob < 0.02 and self.lane_change_timer >= LANE_CHANGE_START_TIME:
           self.lane_change_timer = 0.0
-          if one_blinker:
+          if one_blinker or nav_request:
             self.lane_change_state = LaneChangeState.preLaneChange
-            self.lane_change_direction = self.get_lane_change_direction(carstate)
+            self.lane_change_direction = nav_lane_change if nav_request else self.get_lane_change_direction(carstate)
           else:
             self.lane_change_state = LaneChangeState.off
             self.lane_change_direction = LaneChangeDirection.none
