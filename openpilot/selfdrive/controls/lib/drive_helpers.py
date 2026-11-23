@@ -11,6 +11,10 @@ MIN_STABLE_DELAY = 0.3
 # EU guidelines
 MAX_LATERAL_JERK = 5.0  # m/s^3
 MAX_LATERAL_ACCEL_NO_ROLL = 4.5  # m/s^2 (G80: stock cap 3.0 allowed only ~42deg wheel at 15 m/s; 4.5 = 0.46g, below tire grip ~0.8g, enables full intersection turns)
+# G80 turn-entry smoothing: above the breakpoint, use a lower lateral jerk limit so the
+# model's curvature ramps in more gradually (reduces abrupt high-speed turn-entry takeovers).
+HIGH_SPEED_JERK_BP = 15.0       # m/s: speed breakpoint for the high-speed jerk limit
+HIGH_SPEED_LATERAL_JERK = 3.5   # m/s^3: lateral jerk limit above the breakpoint
 
 
 def should_stop(v_ego: float, a_target: float) -> bool:
@@ -27,7 +31,8 @@ def smooth_value(val, prev_val, tau, dt=DT_MDL):
 def clip_curvature(v_ego, prev_curvature, new_curvature, roll) -> tuple[float, bool]:
   # This function respects ISO lateral jerk and acceleration limits + a max curvature
   v_ego = max(v_ego, MIN_SPEED)
-  max_curvature_rate = MAX_LATERAL_JERK / (v_ego ** 2)  # inexact calculation, check https://github.com/commaai/openpilot/pull/24755
+  max_lateral_jerk = MAX_LATERAL_JERK if v_ego <= HIGH_SPEED_JERK_BP else HIGH_SPEED_LATERAL_JERK
+  max_curvature_rate = max_lateral_jerk / (v_ego ** 2)  # inexact calculation, check https://github.com/commaai/openpilot/pull/24755
   new_curvature = np.clip(new_curvature,
                           prev_curvature - max_curvature_rate * DT_CTRL,
                           prev_curvature + max_curvature_rate * DT_CTRL)
