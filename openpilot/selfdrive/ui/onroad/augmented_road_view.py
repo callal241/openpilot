@@ -9,6 +9,7 @@ from openpilot.selfdrive.ui.onroad.driver_state import DriverStateRenderer
 from openpilot.selfdrive.ui.onroad.hud_renderer import HudRenderer
 from openpilot.selfdrive.ui.onroad.model_renderer import ModelRenderer
 from openpilot.selfdrive.ui.onroad.cameraview import CameraView
+from openpilot.selfdrive.ui.onroad.navigation import NavigationPanel, PANEL_WIDTH
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.common.transformations.camera import DEVICE_CAMERAS, DeviceCameraConfig, view_frame_from_device_frame
 from openpilot.common.transformations.orientation import rot_from_euler
@@ -56,6 +57,7 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
     self._hud_renderer = HudRenderer()
     self.alert_renderer = AlertRenderer()
     self.driver_state_renderer = DriverStateRenderer()
+    self._navigation = NavigationPanel()
 
   def _render(self, rect):
     # Only render when system is started to avoid invalid data access
@@ -67,11 +69,15 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
     # Update calibration before rendering
     self._update_calibration()
 
+    # Show the navigation panel when a destination is set and no alert needs the full width
+    alert_to_render = self.alert_renderer.get_alert(ui_state.sm)
+    show_navigation = ui_state.navigation_enabled and ui_state.nav_destination_set and alert_to_render is None
+
     # Create inner content area with border padding
     self._content_rect = rl.Rectangle(
       rect.x + UI_BORDER_SIZE,
       rect.y + UI_BORDER_SIZE,
-      rect.width - 2 * UI_BORDER_SIZE,
+      rect.width - 2 * UI_BORDER_SIZE - (PANEL_WIDTH if show_navigation else 0),
       rect.height - 2 * UI_BORDER_SIZE,
     )
 
@@ -100,8 +106,17 @@ class AugmentedRoadView(CameraView, AugmentedRoadViewSP):
     # End clipping region
     rl.end_scissor_mode()
 
+    # Navigation panel to the right of the camera view, inside the border
+    if show_navigation:
+      self._navigation.render(rl.Rectangle(self._content_rect.x + self._content_rect.width, self._content_rect.y,
+                                           PANEL_WIDTH, self._content_rect.height))
+
     # Draw colored border based on driving state
     self._draw_border(rect)
+
+  def close(self):
+    self._navigation.close()
+    super().close()
 
   def _handle_mouse_press(self, _):
     if self._click_callback is not None:
