@@ -19,7 +19,6 @@ from openpilot.selfdrive.controls.lib.latcontrol_angle import LatControlAngle, S
 from openpilot.selfdrive.controls.lib.latcontrol_curvature import LatControlCurvature
 from openpilot.selfdrive.controls.lib.latcontrol_torque import LatControlTorque
 from openpilot.selfdrive.controls.lib.longcontrol import LongControl
-from openpilot.selfdrive.controls.lib.nav_controller import NavController
 from openpilot.selfdrive.modeld.modeld import LAT_SMOOTH_SECONDS
 from openpilot.selfdrive.locationd.helpers import PoseCalibrator, Pose
 
@@ -46,16 +45,13 @@ class Controls(ControlsExt):
 
     self.sm = messaging.SubMaster(['lateralDelay', 'vehicleParameters', 'lateralTorqueParameters', 'modelV2', 'selfdriveState',
                                    'extrinsicsCalibration', 'deviceMotion', 'longitudinalPlan', 'lateralManeuverPlan', 'carState', 'carOutput',
-                                   'driverMonitoringState', 'onroadEvents', 'driverAssistance', 'radarTracks',
-                                   'navInstruction', 'navRoute', 'liveLocationKalman'] + self.sm_services_ext,
+                                   'driverMonitoringState', 'onroadEvents', 'driverAssistance', 'radarTracks'] + self.sm_services_ext,
                                   poll='selfdriveState')
     self.pm = messaging.PubMaster(['carControl', 'controlsState'] + self.pm_services_ext)
 
     self.steer_limited_by_safety = False
     self.curvature = 0.0
     self.desired_curvature = 0.0
-
-    self.nav_ctrl = NavController(DT_CTRL, self.params)
 
     self.pose_calibrator = PoseCalibrator()
     self.calibrated_pose: Pose | None = None
@@ -76,7 +72,6 @@ class Controls(ControlsExt):
 
   def update(self):
     self.sm.update(15)
-    self.nav_ctrl.update(self.sm)
     if self.sm.updated["extrinsicsCalibration"]:
       self.pose_calibrator.feed_extrinsics_calibration(self.sm['extrinsicsCalibration'])
     if self.sm.updated["deviceMotion"]:
@@ -151,11 +146,6 @@ class Controls(ControlsExt):
       if CC.latActive:
         # Left-edge clearance: nudge right when a close object is on the left edge
         new_desired_curvature += self._left_edge_curvature_bias(model_v2, CS)
-        # Nav turn/fork trajectory: cross-fade to the GPS route curvature when the
-        # model goes straight but the route diverges (alpha ramps 0->1 over the last 35 m)
-        if self.nav_ctrl.blend_alpha > 0.0:
-          new_desired_curvature = (1.0 - self.nav_ctrl.blend_alpha) * new_desired_curvature + \
-                                  self.nav_ctrl.blend_alpha * self.nav_ctrl.kappa_route
     self.desired_curvature, curvature_limited = clip_curvature(CS.vEgo, self.desired_curvature, new_desired_curvature, lp.roll)
     lat_delay = self.sm["lateralDelay"].lateralDelay + LAT_SMOOTH_SECONDS
 

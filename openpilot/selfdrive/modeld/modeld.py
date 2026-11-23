@@ -36,7 +36,6 @@ from openpilot.common.transformations.camera import DEVICE_CAMERAS
 from openpilot.system.camerad.cameras.nv12_info import get_nv12_info
 from openpilot.common.transformations.model import get_warp_matrix
 from openpilot.selfdrive.controls.lib.desire_helper import DesireHelper
-from openpilot.selfdrive.controls.lib.nav_controller import NavController
 from openpilot.selfdrive.controls.lib.drive_helpers import get_accel_from_plan, should_stop, smooth_value, get_curvature_from_plan
 from openpilot.selfdrive.modeld.parse_model_outputs import Parser
 from openpilot.selfdrive.modeld.fill_model_msg import fill_model_msg, fill_driving_model_data, fill_pose_msg, PublishState
@@ -308,9 +307,8 @@ def main(demo=False):
   # messaging
   pub_socks = ["modelV2", "drivingModelData", "cameraOdometry", "modelDataV2SP"] + (["chestnutGpuState"] if CHESTNUT else [])
   pm = PubMaster(pub_socks)
-  # modelV2 is a loopback subscription to our own output (previous frame), used by the NavController
   sm = SubMaster(["deviceState", "carState", "narrowRoadCameraState", "extrinsicsCalibration", "driverMonitoringState",
-                  "carControl", "controlsState", "lateralDelay", "modelV2", "navInstruction", "navRoute", "liveLocationKalman"])
+                  "carControl", "controlsState", "lateralDelay"])
 
   publish_state = PublishState()
   params = Params()
@@ -341,7 +339,6 @@ def main(demo=False):
   prev_action = log.ModelDataV2.Action()
 
   DH = DesireHelper()
-  nav_ctrl = NavController(DT_MDL)
   RELC = RoadEdgeLaneChangeController()
 
   while True:
@@ -463,13 +460,7 @@ def main(demo=False):
       r_lane_change_prob = desire_state[log.Desire.laneChangeRight]
       lane_change_prob = l_lane_change_prob + r_lane_change_prob
       left_edge, right_edge = RELC.update_and_fill(modelv2_send.modelV2, mdv2sp_send.modelDataV2SP, v_ego)
-      nav_ctrl.update(sm, DH.lane_change_state, left_edge, right_edge)
-      nav_lane_change = None
-      if nav_ctrl.lane_change_request < 0:
-        nav_lane_change = log.LaneChangeDirection.left
-      elif nav_ctrl.lane_change_request > 0:
-        nav_lane_change = log.LaneChangeDirection.right
-      DH.update(sm['carState'], sm['carControl'].latActive, lane_change_prob, left_edge, right_edge, nav_lane_change)
+      DH.update(sm['carState'], sm['carControl'].latActive, lane_change_prob, left_edge, right_edge)
       modelv2_send.modelV2.meta.laneChangeState = DH.lane_change_state
       modelv2_send.modelV2.meta.laneChangeDirection = DH.lane_change_direction
       mdv2sp_send.valid = modelv2_send.valid

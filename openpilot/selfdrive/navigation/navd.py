@@ -50,15 +50,9 @@ class RouteEngine:
     self.recompute_hold = 0
     self.reroute_counter = 0
 
-    # Token priority: MAPBOX_TOKEN env, MapboxToken param (works without comma prime), else comma API proxy
     self.mapbox_token = os.environ.get("MAPBOX_TOKEN")
-    if self.mapbox_token is None:
-      token = self.params.get("MapboxToken", block=False)
-      if token:
-        self.mapbox_token = token
     self.api = Api(self.params.get("DongleId")) if self.mapbox_token is None else None
     self.mapbox_host = "https://api.mapbox.com" if self.mapbox_token is not None else API_HOST.rstrip('/') + '/v1/nav'
-    cloudlog.warning(f"navd routing via {'Mapbox token' if self.mapbox_token is not None else 'comma API proxy'}")
 
   def update(self):
     self.sm.update(0)

@@ -722,15 +722,6 @@ def clearNavDestination() -> dict[str, int]:
 
 
 @dispatcher.add_method
-def setMapboxToken(token: str) -> dict[str, int | str]:
-  # direct Mapbox Directions access without comma prime (navd reads MapboxToken on startup)
-  if not isinstance(token, str) or not token:
-    return {"success": 0, "error": "Invalid token"}
-  Params().put("MapboxToken", token, block=True)
-  return {"success": 1}
-
-
-@dispatcher.add_method
 def setRouteViewed(route: str) -> dict[str, int | str]:
   # maintain a list of the last 10 routes viewed in connect
   params = Params()
