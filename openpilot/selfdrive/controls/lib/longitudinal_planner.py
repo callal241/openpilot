@@ -22,18 +22,6 @@ J_CRUISE_BP = [0., 10.0, 25., 40.]
 A_CRUISE_MIN = -0.5
 CONTROL_N_T_IDX = ModelConstants.T_IDXS[:CONTROL_N]
 
-# Radar-based safety decel (G80 curb/stopping improvements):
-#  - close in-lane objects (curbs, parked cars, shadows the vision model misses)
-#  - stopped/near-stopped leads at distance that the MPC/e2e ramp undershoots
-CLOSE_OBJECT_DIST = 5.0        # m: trigger distance for the close-object decel
-CLOSE_OBJECT_LANE_HALF = 1.8   # m: in-lane y threshold (|yRel|)
-CLOSE_OBJECT_MARGIN = 0.5      # m: safety margin kept before a close object
-CLOSE_OBJECT_MAX_DECEL = 3.0   # m/s^2: max decel from the close-object boost
-STOPPED_LEAD_DIST = 80.0       # m: max distance for the stopped-lead decel
-STOPPED_LEAD_SPEED = 1.0       # m/s: lead speed threshold for "stopped"
-STOPPED_LEAD_MARGIN = 1.0      # m: safety margin kept before a stopped lead
-STOPPED_LEAD_MAX_DECEL = 3.5   # m/s^2: max decel from the stopped-lead boost (matches ACCEL_MIN)
-
 
 def get_cruise_accel(v_cruise, v_ego, a_cruise_prev, dt):
   target_accel = np.clip(v_cruise - v_ego, A_CRUISE_MIN, ACCEL_MAX)
@@ -129,55 +117,9 @@ class LongitudinalPlanner(LongitudinalPlannerSP):
 
     output_a_target, self.mpc.source, _ = min(candidates, key=lambda c: c[0])
     self.output_should_stop = any(should_stop for _, _, should_stop in candidates)
-
-    # Radar-based safety decel: boost braking for very close in-lane objects
-    # (curbs, parked cars, shadows the vision model misses) and for stopped
-    # leads at distance that the MPC/e2e decel ramp undershoots.
-    a_radar_safety = self._radar_safety_decel(sm, v_ego)
-    if a_radar_safety < output_a_target:
-      output_a_target = a_radar_safety
-      if a_radar_safety < -0.5:
-        self.output_should_stop = True
-
     self.output_a_target = np.clip(output_a_target, ACCEL_MIN, ACCEL_MAX)
 
     self.v_desired_filter.x = self.v_desired_filter.x + self.dt * (self.output_a_target + a_prev) / 2.0
-
-  def _radar_safety_decel(self, sm, v_ego):
-    # Returns a non-positive accel to apply on top of the planned accel.
-    # 0.0 when no boost is needed. Conservative: only ever increases braking.
-    a_safety = 0.0
-    if v_ego < 1.0:
-      return a_safety
-
-    # Close in-lane objects from raw radar points (curbs, parked cars, shadows)
-    try:
-      points = sm['radarTracks'].points
-    except Exception:
-      points = []
-    for p in points:
-      d, y = p.dRel, p.yRel
-      # skip objects moving away from us faster than 0.5 m/s relative
-      if d < 0.5 or d > CLOSE_OBJECT_DIST or abs(y) > CLOSE_OBJECT_LANE_HALF or p.vRel > 0.5:
-        continue
-      stop_dist = max(d - CLOSE_OBJECT_MARGIN, 0.3)
-      a_req = v_ego ** 2 / (2.0 * stop_dist)
-      a_safety = min(a_safety, -min(a_req, CLOSE_OBJECT_MAX_DECEL))
-
-    # Stopped/near-stopped leads at distance (MPC/e2e ramp can undershoot)
-    for lead in (sm['radarState'].leadOne, sm['radarState'].leadTwo):
-      if not lead.present:
-        continue
-      d, y = lead.dRel, lead.yRel
-      if d < 0.5 or d > STOPPED_LEAD_DIST or abs(y) > CLOSE_OBJECT_LANE_HALF:
-        continue
-      if lead.vLead > STOPPED_LEAD_SPEED:
-        continue
-      stop_dist = max(d - STOPPED_LEAD_MARGIN, 0.5)
-      a_req = v_ego ** 2 / (2.0 * stop_dist)
-      a_safety = min(a_safety, -min(a_req, STOPPED_LEAD_MAX_DECEL))
-
-    return a_safety
 
   def publish(self, sm, pm):
     plan_send = messaging.new_message('longitudinalPlan')

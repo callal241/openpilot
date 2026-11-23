@@ -45,7 +45,7 @@ class Controls(ControlsExt):
 
     self.sm = messaging.SubMaster(['lateralDelay', 'vehicleParameters', 'lateralTorqueParameters', 'modelV2', 'selfdriveState',
                                    'extrinsicsCalibration', 'deviceMotion', 'longitudinalPlan', 'lateralManeuverPlan', 'carState', 'carOutput',
-                                   'driverMonitoringState', 'onroadEvents', 'driverAssistance', 'radarTracks'] + self.sm_services_ext,
+                                   'driverMonitoringState', 'onroadEvents', 'driverAssistance'] + self.sm_services_ext,
                                   poll='selfdriveState')
     self.pm = messaging.PubMaster(['carControl', 'controlsState'] + self.pm_services_ext)
 
@@ -143,9 +143,6 @@ class Controls(ControlsExt):
       new_desired_curvature = self.sm['lateralManeuverPlan'].desiredCurvature if CC.latActive else self.curvature
     else:
       new_desired_curvature = model_v2.action.desiredCurvature if CC.latActive else self.curvature
-      if CC.latActive:
-        # Left-edge clearance: nudge right when a close object is on the left edge
-        new_desired_curvature += self._left_edge_curvature_bias(model_v2, CS)
     self.desired_curvature, curvature_limited = clip_curvature(CS.vEgo, self.desired_curvature, new_desired_curvature, lp.roll)
     lat_delay = self.sm["lateralDelay"].lateralDelay + LAT_SMOOTH_SECONDS
 
@@ -169,31 +166,6 @@ class Controls(ControlsExt):
         setattr(actuators, p, 0.0)
 
     return CC, lac_log
-
-  def _left_edge_curvature_bias(self, model_v2, CS):
-    # G80 fork tuning: nudge right when a close object sits on the left edge
-    # (curbs, parked cars at the lane edge). Returns a curvature bias
-    # (positive = right). Skipped while a left lane change is in progress.
-    if CS.vEgo < 8.0:
-      return 0.0
-    lcs = model_v2.meta.laneChangeState
-    if (lcs in (LaneChangeState.preLaneChange, LaneChangeState.laneChangeStarting) and
-        model_v2.meta.laneChangeDirection == LaneChangeDirection.left):
-      return 0.0
-    try:
-      points = self.sm['radarTracks'].points
-    except Exception:
-      points = []
-    closeness = 0.0
-    for p in points:
-      # object just left of our lane, 3-20 m ahead
-      if 1.5 < p.yRel <= 3.5 and 3.0 < p.dRel < 20.0:
-        closeness = max(closeness, 1.0 - (p.dRel - 3.0) / 17.0)
-    if closeness <= 0.0:
-      return 0.0
-    # up to ~0.4 m/s^2 of lateral acceleration toward the right
-    a_bias = 0.4 * closeness
-    return a_bias / max(CS.vEgo, 5.0) ** 2
 
   def publish(self, CC, lac_log):
     CS = self.sm['carState']
